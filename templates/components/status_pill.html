@@ -1,0 +1,10 @@
+{% comment %}
+Status pill with an icon, so state never depends on colour alone.
+
+  {% include "components/status_pill.html" with status=application.status %}
+
+status: {label, tone: neutral|accent|positive|caution|critical, icon (optional)}
+{% endcomment %}
+<span class="badge badge-{{ status.tone|default:'neutral' }}">
+  {% if status.icon %}{% icon status.icon css_class="size-3.5" %}{% endif %}{{ status.label }}
+</span>

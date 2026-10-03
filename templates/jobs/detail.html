@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% comment %}
+A single role.
+
+The facts a reader uses to disqualify a job — salary, location, work type,
+level — sit above the prose, because most people are looking for a reason to
+stop reading and it is not the product's job to hide it from them. The apply
+action is sticky on desktop and pinned to the bottom of the screen on mobile,
+so the decision is always one tap away no matter how long the description is.
+{% endcomment %}
+
+{% block title %}{{ job.title }} at {{ job.company.name }} — {{ site.name }}{% endblock %}
+{% block meta_description %}{{ job.summary }}{% endblock %}
+{% block body_class %}pb-20 lg:pb-0{% endblock %}
+
+{% block content %}
+<div class="container-page">
+
+  {# --- Masthead ------------------------------------------------------- #}
+  <div class="app-head">
+    <a href="{% url 'jobs:list' %}"
+       class="mb-4 inline-flex items-center gap-1.5 text-meta font-medium text-content-muted transition-colors hover:text-content">
+      {% icon "arrow-left" css_class="size-4" %}All jobs
+    </a>
+
+    <div class="flex flex-wrap items-start gap-x-6 gap-y-4">
+      {% include "components/avatar.html" with name=job.company.name initials=job.company.initials logo=job.company.logo size="lg" %}
+
+      <div class="min-w-0 flex-1">
+        <h1 class="app-title">{{ job.title }}</h1>
+        <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-lg text-content-muted">
+          <a href="{{ job.company.url }}" class="font-medium text-content hover:underline
+                    [text-underline-offset:0.2em]">{{ job.company.name }}</a>
+          <span aria-hidden="true">·</span>
+          <span>{{ job.company.industry }}</span>
+          {% include "components/status_pill.html" with status=job.company.verification %}
+        </p>
+      </div>
+    </div>
+
+    {# The disqualifying facts, before any prose. #}
+    <dl class="mt-6 grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <dt class="overline">Salary</dt>
+        <dd class="mt-1 text-body-lg font-medium tabular-nums">{{ job.salary_display }}</dd>
+      </div>
+      <div>
+        <dt class="overline">Location</dt>
+        <dd class="mt-1 text-body-lg font-medium">{{ job.location }} · {{ job.workplace }}</dd>
+      </div>
+      <div>
+        <dt class="overline">Experience</dt>
+        <dd class="mt-1 text-body-lg font-medium">{{ job.experience_level }}</dd>
+      </div>
+      <div>
+        <dt class="overline">Contract</dt>
+        <dd class="mt-1 text-body-lg font-medium">{{ job.employment_type }}</dd>
+      </div>
+    </dl>
+
+    {% comment %}
+      A deadline only appears inside two weeks, and only reads as urgent inside
+      one. Printing "closes in 30 days" on every listing trains people to
+      ignore the line that matters when it says three.
+    {% endcomment %}
+    {% if job.closing %}
+      <p class="mt-5 inline-flex items-center gap-2 text-meta
+                {% if job.closing.urgent %}font-medium text-warning-fg{% else %}text-content-muted{% endif %}">
+        {% icon "clock" css_class="size-4" %}{{ job.closing.label }}
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="grid gap-10 py-8 lg:grid-cols-[1fr_20rem] lg:gap-14 lg:py-10">
+
+    {# --- The role ----------------------------------------------------- #}
+    <div class="min-w-0">
+      <p class="lede">{{ job.summary }}</p>
+
+      <div class="stack mt-10">
+        {% if job.responsibilities %}
+        <section>
+          <div class="stack-head"><h2 class="stack-title">What you'll do</h2></div>
+          <ul class="mt-4 space-y-2.5">
+            {% for item in job.responsibilities %}
+              <li class="flex gap-3 text-body-lg leading-relaxed text-content-muted">
+                <span class="mt-2 size-1 shrink-0 rounded-full bg-mark" aria-hidden="true"></span>
+                <span class="measure">{{ item }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+
+        {% if job.requirements %}
+        <section>
+          <div class="stack-head"><h2 class="stack-title">What they're asking for</h2></div>
+          <ul class="mt-4 space-y-2.5">
+            {% for item in job.requirements %}
+              <li class="flex gap-3 text-body-lg leading-relaxed text-content-muted">
+                <span class="mt-2 size-1 shrink-0 rounded-full bg-mark" aria-hidden="true"></span>
+                <span class="measure">{{ item }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+
+        {% if job.skills %}
+        <section>
+          <div class="stack-head"><h2 class="stack-title">Skills on this posting</h2></div>
+          <ul class="mt-4 flex flex-wrap gap-1.5">
+            {% for skill in job.skills %}
+              <li class="chip{% if job.match and skill in job.match.matched %} chip-match{% endif %}">
+                {% if job.match and skill in job.match.matched %}{% icon "check" css_class="size-3" %}{% endif %}{{ skill }}
+              </li>
+            {% endfor %}
+          </ul>
+          {% if job.match %}
+            <p class="mt-3 text-meta text-content-subtle">
+              Ticks mark skills found in your CV.
+            </p>
+          {% endif %}
+        </section>
+        {% endif %}
+
+        {% if job.benefits %}
+        <section>
+          <div class="stack-head"><h2 class="stack-title">What's on offer</h2></div>
+          <ul class="mt-4 space-y-2.5">
+            {% for item in job.benefits %}
+              <li class="flex gap-3 text-body-lg leading-relaxed text-content-muted">
+                {% icon "check" css_class="mt-1 size-4 shrink-0 text-success-fg" %}
+                <span>{{ item }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+
+        <section>
+          <div class="stack-head">
+            <h2 class="stack-title">About {{ job.company.name }}</h2>
+            <a href="{{ job.company.url }}" class="link-editorial">Company profile</a>
+          </div>
+          {% for paragraph in job.company.about %}
+            <p class="measure mt-4 text-body-lg leading-relaxed text-content-muted">{{ paragraph }}</p>
+          {% empty %}
+            <p class="measure mt-4 text-body-lg leading-relaxed text-content-muted">
+              {{ job.company.tagline|default:"This company has not written a profile yet." }}
+            </p>
+          {% endfor %}
+        </section>
+
+        {% comment %}
+          How to apply.
+
+          An external posting links to the employer's own site. A platform
+          posting links to the apply screen — which P8 built and which this
+          section went on describing as unavailable until P14 noticed. The
+          `applications` flag is still the gate; when it is off, this says so
+          rather than rendering a dead primary action.
+
+          "Draft a letter" is here rather than on the apply form because a
+          draft is written before applying, not during it, and because the
+          letter it produces is kept whether or not this application happens.
+        {% endcomment %}
+        <section id="apply" tabindex="-1" class="scroll-mt-24">
+          <div class="stack-head"><h2 class="stack-title">Apply</h2></div>
+          {% if job.apply.mode == "external" %}
+            <p class="measure mt-4 text-body-lg leading-relaxed text-content-muted">
+              This employer takes applications on their own site. The link opens in a
+              new tab; nothing is sent from here.
+            </p>
+            <a href="{{ job.apply.url }}" rel="noopener nofollow" target="_blank"
+               class="btn btn-primary btn-lg mt-4">
+              {% icon "external" css_class="size-4.5" %}Apply on {{ job.company.name }}'s site
+            </a>
+          {% elif job.apply.mode == "platform" %}
+            <p class="measure mt-4 text-body-lg leading-relaxed text-content-muted">
+              This employer takes applications through {{ site.name }}. You choose which CV
+              goes, and nothing is sent until you press send.
+            </p>
+            <div class="mt-4 flex flex-wrap items-center gap-3">
+              <a href="{{ job.apply.url }}" class="btn btn-primary btn-lg">Apply</a>
+              {% if user.is_authenticated %}
+                {% include "letters/_draft_button.html" with job=raw_job %}
+              {% endif %}
+            </div>
+          {% else %}
+            <p class="measure mt-4 text-body-lg leading-relaxed text-content-muted">
+              Applying through {{ site.name }} is switched off just now. Save the role and
+              you will have it back when it returns.
+            </p>
+            {% include "jobs/_save_button.html" with job=job %}
+          {% endif %}
+        </section>
+      </div>
+    </div>
+
+    {# --- Decision column ---------------------------------------------- #}
+    <aside class="lg:sticky lg:top-24 lg:self-start">
+      <div class="hidden lg:block">
+        {% if job.apply.mode == "external" %}
+          <a href="{{ job.apply.url }}" rel="noopener nofollow" target="_blank"
+             class="btn btn-primary btn-lg btn-block">Apply on their site</a>
+        {% else %}
+          <a href="#apply" class="btn btn-primary btn-lg btn-block">How to apply</a>
+        {% endif %}
+        {% include "jobs/_save_button.html" with job=job %}
+        {% include "jobs/_share.html" with job=job %}
+      </div>
+
+      {% if job.match %}
+        <div class="mt-6">
+          {% include "components/match_reason.html" with match=job.match %}
+        </div>
+      {% elif features.resume %}
+        <div class="panel mt-6 p-5">
+          <h2 class="text-body-lg">Would you be a match?</h2>
+          <p class="mt-2 text-meta leading-relaxed text-content-muted">
+            Upload your CV and this role gets a score with the reasoning attached:
+            which of the skills above you have, and which you don't.
+          </p>
+          <a href="{% url 'resume:upload' %}" class="btn btn-secondary btn-sm mt-4 btn-block">
+            {% icon "upload" css_class="size-4" %}Check my CV against it
+          </a>
+        </div>
+      {% endif %}
+
+      <dl class="mt-6 space-y-3 border-t border-hairline pt-5 text-meta">
+        <div class="flex justify-between gap-4">
+          <dt class="text-content-subtle">Posted</dt>
+          <dd class="font-medium">{{ job.posted_display }}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-content-subtle">Views</dt>
+          <dd class="font-medium tabular-nums">{{ job.views }}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-content-subtle">Category</dt>
+          <dd class="font-medium">{{ job.category }}</dd>
+        </div>
+      </dl>
+    </aside>
+  </div>
+
+  {% if similar %}
+    <section class="border-t border-hairline py-10">
+      <h2 class="stack-title">Similar roles</h2>
+      <ul class="rows mt-4">
+        {% for other in similar %}
+          {% include "components/job_row.html" with job=other %}
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</div>
+
+{# Mobile action bar: the decision follows the reader down the page. #}
+<div class="fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-canvas px-4 py-3 lg:hidden">
+  <div class="flex items-center gap-2">
+    <span class="shrink-0">{% include "jobs/_control.html" with job=job %}</span>
+    <a href="#apply" class="btn btn-primary flex-1">Apply · {{ job.salary_display }}</a>
+
+  </div>
+</div>
+{% endblock %}

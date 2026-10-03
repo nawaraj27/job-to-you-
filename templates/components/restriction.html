@@ -1,0 +1,27 @@
+{% comment %}
+An expected refusal: a plan limit, a permission, a state that does not allow
+it yet. The design system's warning alert, not its error alert — nothing is
+broken — with the service's own sentence and, where there is one, the next
+step. Rendered by `common.errors_middleware` for every restriction, so the
+wording and the link are decided once (`common.restrictions`).
+
+Real failures never come through here; they keep the error styling.
+{% endcomment %}
+<div class="alert alert-warning" role="status" data-restriction="{{ restriction.kind }}">
+  <span class="mt-px shrink-0 text-warning-fg">{% icon "warning" css_class="size-5" %}</span>
+  <div class="min-w-0">
+    <p class="font-medium">{{ restriction.title }}</p>
+    <p class="mt-0.5 text-content-muted">{{ restriction.message }}</p>
+    {% if restriction.hint %}<p class="mt-0.5 text-content-muted">{{ restriction.hint }}</p>{% endif %}
+    {% if restriction.action_url or restriction.secondary_url %}
+      <div class="mt-3 flex flex-wrap gap-2">
+        {% if restriction.action_url %}
+          <a href="{{ restriction.action_url }}" class="btn btn-primary btn-sm">{{ restriction.action_label }}</a>
+        {% endif %}
+        {% if restriction.secondary_url %}
+          <a href="{{ restriction.secondary_url }}" class="btn btn-secondary btn-sm">{{ restriction.secondary_label }}</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>

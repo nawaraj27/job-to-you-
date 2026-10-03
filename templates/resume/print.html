@@ -1,0 +1,16 @@
+{% extends "layouts/builder.html" %}
+{% comment %}
+The document alone, sized for paper.
+
+The browser's own print path, for a candidate who wants a sheet rather than a
+file. It renders the same partial the editor's preview and the PDF exporter
+read, so printing from here and downloading the PDF produce the same layout.
+{% endcomment %}
+
+{% block title %}{{ document.name }}{% endblock %}
+
+{% block builder_body %}
+  <div class="print-sheet">
+    {% include "resume/_paper.html" %}
+  </div>
+{% endblock %}

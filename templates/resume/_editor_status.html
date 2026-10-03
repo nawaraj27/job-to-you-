@@ -1,0 +1,56 @@
+{% comment %}
+Save status. Says what is true rather than what is reassuring: a draft with
+unsaved changes says so, and "saved" means a version exists.
+{% endcomment %}
+{% url 'resume:builder_act' document_id=document.public_id as act %}
+<div class="card">
+  <div class="card-body flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <p class="font-medium">
+        {% if status.dirty %}Unsaved changes{% else %}Everything saved{% endif %}
+      </p>
+      <p class="text-meta text-content-muted">
+        {% if status.version_no %}Version {{ status.version_no }}{% else %}No saved version yet{% endif %}
+        {% if status.saved_at %} · draft saved {{ status.saved_at|timesince }} ago{% endif %}
+      </p>
+      {% if not document.is_saved %}
+        {% comment %}docs/CV-Lifecycle.md: a draft is not in "Your CVs" until it is saved, and expires if left alone.{% endcomment %}
+        <p class="mt-1 text-meta text-warning-fg">
+          This is an unsaved draft. Save a version to keep it in your CVs{% if document_expires_on %}; otherwise it is removed on {{ document_expires_on|date:"j M Y" }}{% endif %}.
+        </p>
+      {% endif %}
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {% if status.can_undo %}
+        <button type="button" class="btn btn-ghost btn-sm"
+                hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                hx-vals='{"command": "undo"}'>Undo</button>
+      {% endif %}
+      {% comment %}
+        A form rather than an `hx-vals` button, so the note travels with the
+        command. The service has stored a change note since the first version
+        of this feature and nothing ever sent one: the history read as a column
+        of identical timestamps, and the field that would have fixed it existed
+        the whole time.
+
+        Optional, and unlabelled on purpose — the placeholder is the label at
+        this size, and a required note would mean a candidate who wants to
+        freeze their work has to name it first.
+
+        The row wraps and the note shrinks. Fixed at `w-44` it did not: Undo,
+        a 176 px note and "Save a version" came to 368 px inside a 330 px card,
+        and the 34 px that would not fit pushed the whole document sideways on
+        a 375 px phone — on the editor, the guided builder and the assistant,
+        which all include this partial.
+      {% endcomment %}
+      <form class="flex min-w-0 flex-1 gap-2" hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML">
+        <input type="hidden" name="command" value="save_version">
+        <label class="sr-only" for="version-note">What changed in this version</label>
+        <input type="text" id="version-note" name="note" maxlength="200"
+               class="input input-sm w-full min-w-0 sm:w-44"
+               placeholder="What changed (optional)">
+        <button type="submit" class="btn btn-primary btn-sm">Save a version</button>
+      </form>
+    </div>
+  </div>
+</div>

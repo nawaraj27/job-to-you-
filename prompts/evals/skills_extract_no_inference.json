@@ -1,0 +1,14 @@
+{
+  "task_key": "skills.extract",
+  "name": "does not infer skills the text never claims",
+  "inputs": {
+    "text": "Built and shipped a billing service in Django. Wrote the migrations and owned the on-call rota."
+  },
+  "expect": {
+    "has": ["skills"],
+    "min_items": {"skills": 1},
+    "each_has": {"skills": ["term"]},
+    "contains": ["django"],
+    "absent": ["postgresql", "react", "kubernetes"]
+  }
+}

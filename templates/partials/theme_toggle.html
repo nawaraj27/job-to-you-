@@ -1,0 +1,9 @@
+<button type="button"
+        x-data="themeToggle"
+        @click="toggle()"
+        class="btn btn-ghost btn-icon"
+        :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+        title="Toggle theme">
+  <span x-show="theme !== 'dark'">{% icon "moon" css_class="size-5" %}</span>
+  <span x-show="theme === 'dark'" x-cloak>{% icon "sun" css_class="size-5" %}</span>
+</button>

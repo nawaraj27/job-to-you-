@@ -1,0 +1,87 @@
+{% comment %}
+Search results, swapped over HTMX.
+
+A row is a headline, a place, a length of career and some skills — never a name
+and never contact details. The row exists to justify opening the profile, not to
+replace it, and a result list that carried enough to act on would be an export
+that nobody granted.
+
+Export is a form over the same rows: the checkboxes are the shortlist, and the
+button only appears for somebody holding `candidate.export`.
+{% endcomment %}
+<div id="talent-results">
+  {% if error %}
+    <p class="text-meta text-danger-fg" role="status">{{ error }}</p>
+  {% endif %}
+
+  {% if not searched %}
+    <div class="card">
+      <div class="card-body">
+        <p class="text-content-muted">
+          Search by skill, place or the words on a profile. You will see candidates
+          who chose to be discoverable, and everyone who has applied to you.
+        </p>
+      </div>
+    </div>
+  {% elif page.items %}
+    {# Result rows are h3s; without this the page jumped from h1 to h3 (axe heading-order). #}
+    <h2 class="sr-only">Matching candidates</h2>
+    <form method="post" action="{% url 'employer:talent_export' company.slug %}">
+      {% csrf_token %}
+
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-meta text-content-muted">{{ total }} candidate{{ total|pluralize }}</p>
+        {% if can_export %}
+          <div class="flex items-center gap-3">
+            <button type="submit" class="btn btn-secondary btn-sm">Export selected</button>
+            <span class="text-caption text-content-subtle">
+              Up to {{ export_limit }}. Every exported candidate is told you looked.
+            </span>
+          </div>
+        {% endif %}
+      </div>
+
+      <ul class="divide-y divide-hairline">
+        {% for candidate in page.items %}
+          <li class="row">
+            <div class="flex items-start gap-4">
+              {% if can_export %}
+                <label class="mt-1 shrink-0">
+                  <span class="sr-only">Select {{ candidate.headline }}</span>
+                  <input type="checkbox" name="candidate" value="{{ candidate.public_id }}">
+                </label>
+              {% endif %}
+
+              <div class="min-w-0 flex-1">
+                <h3 class="text-body-lg leading-snug">
+                  <a href="{% url 'employer:talent_profile' company.slug candidate.public_id %}"
+                     class="hover:underline [text-underline-offset:0.2em]">{{ candidate.headline }}</a>
+                </h3>
+                <p class="mt-1 text-meta text-content-muted">
+                  {{ candidate.experience_label }}
+                  {% if candidate.location %}
+                    <span aria-hidden="true" class="mx-1.5 text-content-subtle">·</span>{{ candidate.location }}
+                  {% endif %}
+                  {% if candidate.seeking %}
+                    <span aria-hidden="true" class="mx-1.5 text-content-subtle">·</span>{{ candidate.seeking }}
+                  {% endif %}
+                </p>
+                {% if candidate.skills %}
+                  <ul class="mt-2.5 flex flex-wrap gap-1.5">
+                    {% for skill in candidate.skills %}<li class="chip">{{ skill }}</li>{% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+
+      {% if page.total_pages > 1 %}
+        <div class="mt-6">{% include "components/pagination.html" with page=page %}</div>
+      {% endif %}
+    </form>
+  {% else %}
+    {% include "components/empty_state.html" with icon="search" title="Nobody matched that" text="Fewer filters will find more people. Candidates appear here only if they chose to be discoverable or have applied to you." %}
+  {% endif %}
+</div>

@@ -1,0 +1,136 @@
+{% comment %}
+Filter controls, rendered once for the desktop rail and once inside the mobile
+sheet.
+
+Every group and every count comes from the search itself (apps/jobs/search.py
+facets()), computed over the rows the current search returned. That is the
+point: a facet counted over everything offers choices that lead to an empty
+page, and a job board that does that teaches people to distrust its filters.
+
+  {% include "jobs/_filters.html" with scope="rail" %}
+  {% include "jobs/_filters.html" with scope="sheet" %}
+
+`scope` is required because the partial appears twice on the same page: without
+it the two copies emit the same element ids, which breaks `aria-controls` and
+makes the document invalid. Checkbox labels wrap their input, so no `for`/`id`
+pair is needed there.
+
+Nothing submits on change: the form has an explicit apply button, because a
+results list that reflows under your thumb while you are still choosing is the
+single most annoying thing a job board does.
+{% endcomment %}
+{% with scope=scope|default:"rail" %}
+<form method="get" action="{% url 'jobs:list' %}" class="space-y-5"
+      hx-get="{% url 'jobs:list' %}"
+      hx-target="#job-results .loading-content"
+      hx-swap="innerHTML"
+      hx-push-url="true"
+      hx-indicator="#job-results"
+      hx-disabled-elt="find button[type=submit]">
+  {% comment %}
+    The search box and the sort order are not filters, but they are state the
+    reader chose — carrying them through means applying a filter never silently
+    throws away what someone typed.
+  {% endcomment %}
+  {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+  {% if sort and sort != "relevance" %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+
+  {% comment %}
+    Radios, not checkboxes: these fields hold one value each on a posting, so
+    two ticked boxes would be a filter that can never match anything. "Any" is
+    the way back out.
+  {% endcomment %}
+  {% for facet in facets %}
+    <fieldset x-data="disclosure({% if forloop.counter <= 3 %}true{% else %}false{% endif %})"
+              class="border-t border-hairline pt-3 first:border-0 first:pt-0">
+      <legend class="sr-only">{{ facet.label }}</legend>
+      <button type="button" @click="toggle()"
+              class="flex w-full items-center justify-between py-1 text-left"
+              :aria-expanded="open ? 'true' : 'false'"
+              aria-controls="{{ scope }}-{{ facet.field }}">
+        <span class="text-meta font-semibold">{{ facet.label }}</span>
+        {% icon "chevron-down" css_class="size-4 text-content-subtle transition-transform" %}
+      </button>
+
+      <div id="{{ scope }}-{{ facet.field }}" x-show="open" x-cloak class="mt-2 space-y-1">
+        <label class="flex min-h-9 items-center gap-2.5 text-body text-content-muted">
+          <input type="radio" name="{{ facet.field }}" value=""
+                 class="size-4 shrink-0 border-hairline-strong accent-brand-600"
+                 {% if not facet.chosen %}checked{% endif %}>
+          <span>{{ facet.any_label|default:"Any" }}</span>
+        </label>
+        {% for option in facet.options %}
+          {% comment %}
+            Generous vertical padding: a 13px label is a 13px hit area unless
+            the label itself is the target, and this list is used on a phone.
+            The count is what turns a list of options into a decision.
+          {% endcomment %}
+          <label class="flex min-h-9 items-center gap-2.5 text-body text-content-muted">
+            <input type="radio" name="{{ facet.field }}" value="{{ option.value }}"
+                   class="size-4 shrink-0 border-hairline-strong accent-brand-600"
+                   {% if option.value == facet.chosen %}checked{% endif %}>
+            <span class="flex-1">{{ option.label }}</span>
+            <span class="text-meta tabular-nums text-content-subtle">{{ option.count }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+  {% endfor %}
+
+  <fieldset x-data="disclosure(true)" class="border-t border-hairline pt-3">
+    <legend class="sr-only">Where</legend>
+    <button type="button" @click="toggle()"
+            class="flex w-full items-center justify-between py-1 text-left"
+            :aria-expanded="open ? 'true' : 'false'"
+            aria-controls="{{ scope }}-place">
+      <span class="text-meta font-semibold">Where and what</span>
+      {% icon "chevron-down" css_class="size-4 text-content-subtle transition-transform" %}
+    </button>
+    <div id="{{ scope }}-place" x-show="open" x-cloak class="mt-2.5 space-y-3">
+      <label class="block">
+        <span class="sr-only">Location</span>
+        <select name="location" class="select">
+          <option value="">Anywhere</option>
+          {% for place in locations %}
+            <option value="{{ place.pk }}"
+                    {% if place.pk == search.location_id %}selected{% endif %}>{{ place.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="sr-only">Category</span>
+        <select name="category" class="select">
+          <option value="">Every category</option>
+          {% for category in categories %}
+            <option value="{{ category.pk }}"
+                    {% if category.pk == search.category_id %}selected{% endif %}>{{ category.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+  </fieldset>
+
+  {% comment %}
+    Salary compares on the annualised base figure (ADR-A39), which is the only
+    number two currencies can be compared in. A posting that hid its pay is
+    excluded rather than assumed to qualify — the alternative wastes the time
+    of exactly the person who set a floor.
+  {% endcomment %}
+  <fieldset class="border-t border-hairline pt-3">
+    <legend class="text-meta font-semibold">Minimum salary</legend>
+    <label class="mt-2 block">
+      <span class="sr-only">Minimum annual salary</span>
+      <input type="number" name="salary_min" inputmode="numeric" min="0" step="10000"
+             value="{{ search.salary_min|default_if_none:'' }}"
+             class="input" placeholder="Annual, any currency">
+    </label>
+  </fieldset>
+
+  <div class="flex gap-2 border-t border-hairline pt-4">
+    <button type="submit" class="btn btn-primary btn-sm flex-1">Apply filters</button>
+    {% if active_filters %}
+      <a href="{{ clear_filters_url }}" class="btn btn-ghost btn-sm">Clear</a>
+    {% endif %}
+  </div>
+</form>
+{% endwith %}

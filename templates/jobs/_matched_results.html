@@ -1,0 +1,54 @@
+{% comment %}
+The results half of the matched feed.
+
+Split out for the same reason the search results are: paging swaps this region
+over HTMX rather than reloading the page.
+
+Two banners live here and both are about honesty rather than decoration. A
+**provisional** feed is one scored without enough confirmed skills (FR-8.7),
+and it says so and names the one action that fixes it. A **widened** feed is one
+where a filter was relaxed to avoid an empty page (SRS §10.2), and saying so is
+the difference between a helpful fallback and a silent lie about what was asked.
+{% endcomment %}
+<div id="matched-results" class="stack">
+
+  {% if feed.provisional %}
+    <div class="panel bg-surface-sunken p-4">
+      <p class="text-meta">
+        <span class="font-medium">These are provisional.</span>
+        Your profile lists too few confirmed skills to score against properly, so
+        these are ordered on everything else we know.
+      </p>
+      <p class="mt-2 text-meta">
+        <a href="{{ skills_url }}" class="link-editorial">Confirm your skills</a>;
+        it is the single thing that changes these results most.
+      </p>
+    </div>
+  {% endif %}
+
+  {% if feed.widened %}
+    <p class="text-meta text-content-muted" role="status">
+      Not many roles matched exactly, so this list also includes ones outside
+      your stated
+      {% if "salary" in feed.relaxed and "workplace" in feed.relaxed %}pay and work-type preferences
+      {% elif "salary" in feed.relaxed %}pay range
+      {% else %}work-type preferences{% endif %}.
+    </p>
+  {% endif %}
+
+  {% if page.items %}
+    <ul class="divide-y divide-hairline">
+      {% for job in page.items %}
+        {% include "components/job_row.html" with job=job show_match=1 %}
+      {% endfor %}
+    </ul>
+
+    {% if page.total_pages > 1 %}
+      <div class="mt-6">
+        {% include "components/pagination.html" with page=page %}
+      </div>
+    {% endif %}
+  {% else %}
+    {% include "components/empty_state.html" with title="Nothing to match against yet" text="Add your skills and what you are looking for, and roles will appear here as they are posted." action_url=skills_url action_label="Complete your profile" %}
+  {% endif %}
+</div>

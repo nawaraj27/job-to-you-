@@ -1,0 +1,99 @@
+{% comment %}
+Answering aloud (spoken practice).
+
+Every state the recorder can be in has words on the screen, because each of
+them is a place a candidate otherwise gets stuck: asked for permission, told no
+by the browser, no microphone at all, recording, transcribing, failed, and
+ready to check. Typing is available in every one of them.
+
+What is captured is said before anything is switched on, and again beside the
+controls: the microphone is recorded for this answer only, the recording is
+transcribed on the server and deleted, and the camera preview never leaves the
+device.
+{% endcomment %}
+<section class="card" aria-labelledby="voice-heading"
+         x-data="voiceAnswer('{% url 'interviews:transcribe' public_id=session.public_id %}', {{ turn.pk }}, {{ seconds|default:240 }}, {{ speech_available|yesno:'true,false' }})"
+         @visibilitychange.document="onHidden">
+  <div class="card-body stack">
+    <h2 class="text-body-lg" id="voice-heading">Answer aloud</h2>
+
+    <details class="text-caption text-content-muted">
+      <summary class="link-editorial cursor-pointer">What is recorded, and what happens to it</summary>
+      <ul class="mt-2 list-disc pl-5 space-y-1">
+        <li>Your microphone is recorded only between "Start answering" and "Stop".</li>
+        <li>The recording is sent to our server, turned into text, and deleted straight away. It is never stored.</li>
+        <li>The camera, if you turn it on, is a preview for you. Video is never recorded or sent anywhere.</li>
+        <li>We keep the text of your answer and a few timing numbers — how long you spoke, your pace, long pauses and filler words — with this practice interview. They are deleted with it.</li>
+        <li>Your face, expression, eye contact and appearance are not analysed. Delivery numbers are feedback for you and are never part of your score.</li>
+      </ul>
+    </details>
+
+    <video x-ref="preview" autoplay muted playsinline x-show="hasVideo" x-cloak
+           class="w-full max-w-sm rounded-lg bg-surface-sunken"
+           aria-label="Your camera preview. It is not recorded."></video>
+
+    <div x-show="state === 'idle'" class="flex flex-wrap gap-3">
+      <button type="button" class="btn btn-primary" @click="startWithCamera">Turn on microphone and camera</button>
+      <button type="button" class="btn btn-secondary" @click="startAudioOnly">Microphone only</button>
+    </div>
+
+    <p x-show="state === 'requesting'" x-cloak role="status" class="text-content-muted">
+      Your browser is asking for permission. Choose "Allow" to answer aloud.
+    </p>
+
+    <div x-show="state === 'denied'" x-cloak role="alert" class="stack">
+      <p class="text-danger-fg">Your browser blocked the microphone.</p>
+      <p class="text-meta text-content-muted">
+        To allow it, click the camera or lock icon in the address bar, set Microphone to
+        "Allow", then press Try again. Or type your answer below; it is scored the same way.
+      </p>
+      <button type="button" class="btn btn-secondary btn-sm self-start" @click="retry">Try again</button>
+    </div>
+
+    <div x-show="state === 'unavailable'" x-cloak role="alert" class="stack">
+      <p class="text-danger-fg">No microphone could be used.</p>
+      <p class="text-meta text-content-muted">
+        Either no microphone is connected, another app is using it, or this browser cannot record
+        audio. Recent Chrome, Edge, Firefox and Safari can. You can type your answer below.
+      </p>
+      <button type="button" class="btn btn-secondary btn-sm self-start" @click="retry">Try again</button>
+    </div>
+
+    <p x-show="state === 'nospeech'" x-cloak role="status" class="text-meta text-content-muted">
+      Speech recognition is not set up on this server, so answers cannot be transcribed. You can
+      keep the camera on to rehearse and type your answer below.
+    </p>
+
+    <div x-show="state === 'ready'" x-cloak>
+      <button type="button" class="btn btn-primary" @click="record">Start answering</button>
+    </div>
+
+    <div x-show="state === 'recording'" x-cloak class="flex flex-wrap items-center gap-3">
+      <span class="text-meta tabular-nums" role="status" aria-live="off">
+        Recording <span x-text="recordingClock()"></span>
+      </span>
+      <button type="button" class="btn btn-primary" @click="stop">Stop and transcribe</button>
+    </div>
+
+    <p x-show="state === 'transcribing'" x-cloak role="status" class="text-content-muted">
+      Turning your answer into text. This usually takes a few seconds.
+    </p>
+
+    <div x-show="state === 'error'" x-cloak role="alert" class="stack">
+      <p class="text-danger-fg" x-text="message"></p>
+      <button type="button" class="btn btn-secondary btn-sm self-start" @click="retry">Record again</button>
+    </div>
+
+    <div x-show="state === 'review'" x-cloak class="stack">
+      <p role="status" class="text-meta">
+        Your answer is in the box below. Check it and fix anything that was misheard, then submit.
+      </p>
+      <ul class="list-disc pl-5 text-meta text-content-muted space-y-1" x-show="notes.length">
+        <template x-for="note in notes">
+          <li x-text="note"></li>
+        </template>
+      </ul>
+      <button type="button" class="btn btn-ghost btn-sm self-start" @click="retry">Record again</button>
+    </div>
+  </div>
+</section>

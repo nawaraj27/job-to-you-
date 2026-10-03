@@ -1,0 +1,136 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+Interviews, and the calendar an interviewer publishes (FR-10.6).
+
+Publishing is a date plus a list of times rather than eight datetime pairs,
+because that is how somebody thinks about their own week — "Tuesday, and these
+four slots".
+
+Overlapping times are refused by the database, and the message says so in
+ordinary words rather than showing a constraint name.
+{% endcomment %}
+
+{% block title %}Interviews - {{ company.name }}{% endblock %}
+{% block page_heading %}Interviews{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    What is booked, what has happened, and the times you are open for.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  {% if can_publish_slots %}
+  <section class="card mb-8">
+    <div class="card-body">
+      <h2 class="text-body-lg">Publish times</h2>
+      <p class="mt-1 text-meta text-content-muted">
+        Candidates pick from these. Two overlapping times are refused; you cannot
+        be in two interviews at once, and the calendar should say so.
+      </p>
+
+      <form method="post" action="{% url 'employer:interview_slots' company.slug %}"
+            class="mt-4 grid gap-3 sm:grid-cols-4">
+        {% csrf_token %}
+        <div>
+          <label class="label" for="date">Date</label>
+          <input class="input" id="date" name="date" type="date" required>
+        </div>
+        {% comment %}
+          The hint said "add more as you go" above a single time field with no
+          way to add another, so publishing a morning of slots meant
+          submitting the form four times. Four fields; fill as many as needed.
+        {% endcomment %}
+        <fieldset class="sm:col-span-2">
+          <legend class="label">Start times</legend>
+          <div class="grid grid-cols-2 gap-2">
+            <input class="input" id="time" name="time" type="time" required aria-label="First start time">
+            <input class="input" name="time" type="time" aria-label="Second start time (optional)">
+            <input class="input" name="time" type="time" aria-label="Third start time (optional)">
+            <input class="input" name="time" type="time" aria-label="Fourth start time (optional)">
+          </div>
+          <p class="text-caption text-content-subtle">
+            Fill in as many as you need. Times are in {{ time_zone }}.
+          </p>
+        </fieldset>
+        <div>
+          <label class="label" for="minutes">Length</label>
+          <select class="input" id="minutes" name="minutes">
+            <option value="30">30 minutes</option>
+            <option value="45" selected>45 minutes</option>
+            <option value="60">60 minutes</option>
+          </select>
+        </div>
+        <div class="sm:col-span-4">
+          <button type="submit" class="btn btn-secondary">Publish</button>
+        </div>
+      </form>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if upcoming %}
+    <section class="mb-8">
+      <h2 class="text-lg font-semibold">Coming up</h2>
+      <ul class="mt-3 divide-y divide-hairline">
+        {% for session in upcoming %}
+          <li class="flex items-center justify-between gap-3 py-3">
+            <span>
+              <a href="{% url 'employer:interview_detail' company.slug session.public_id %}"
+                 class="text-meta hover:underline [text-underline-offset:0.2em]">
+                {{ session.application.job.title }}
+              </a>
+              <span class="block text-caption text-content-subtle">
+                {{ session.scheduled_at|date:"l j F, H:i" }} · {{ session.get_kind_display }}
+              </span>
+            </span>
+            <span class="badge badge-neutral">{{ session.get_state_display }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if completed %}
+    <section class="mb-8">
+      <h2 class="text-lg font-semibold">Done</h2>
+      <ul class="mt-3 divide-y divide-hairline">
+        {% for session in completed %}
+          <li class="flex items-center justify-between gap-3 py-3">
+            <span>
+              <a href="{% url 'employer:interview_detail' company.slug session.public_id %}"
+                 class="text-meta hover:underline [text-underline-offset:0.2em]">
+                {{ session.application.job.title }}
+              </a>
+              <span class="block text-caption text-content-subtle">
+                {{ session.created_at|date:"j M Y" }} · {{ session.get_kind_display }}
+              </span>
+            </span>
+            {% if session.outcome %}
+              <span class="text-caption text-content-subtle">
+                {{ session.outcome.get_recommendation_display }}
+              </span>
+            {% else %}
+              <span class="text-caption text-content-subtle">Not scored</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if slots %}
+    <section>
+      <h2 class="text-lg font-semibold">Your published times</h2>
+      <ul class="mt-3 divide-y divide-hairline">
+        {% for slot in slots %}
+          <li class="flex items-center justify-between gap-3 py-2 text-meta">
+            <span>{{ slot.starts_at|date:"l j F, H:i" }} – {{ slot.ends_at|date:"H:i" }}</span>
+            <span class="text-caption text-content-subtle">{{ slot.get_state_display }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% elif not upcoming and not completed %}
+    {% include "components/empty_state.html" with icon="calendar" title="Nothing booked yet" text="Publish some times above and candidates you invite can pick one." %}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,104 @@
+{% comment %}
+Loading placeholder, shaped like the thing it replaces.
+
+  {% include "components/skeleton.html" with variant="rows" count=6 %}
+  {% include "components/skeleton.html" with variant="papers" count=8 %}
+  {% include "components/skeleton.html" with variant="report" %}
+  {% include "components/skeleton.html" with variant="stats" count=3 %}
+
+Why this rather than a spinner: a spinner occupies no space, so the content
+arriving under it shoves the page — the layout shift is the actual cost, and
+it lands exactly when the user has started reading. Each variant here is built
+to the metrics of its real counterpart (same avatar size, same line heights,
+same row padding), so the swap moves nothing.
+
+Rows are staggered by 90ms via `--stagger` so a list reads as arriving in
+order rather than as one flashing block. `prefers-reduced-motion` kills the
+pulse globally in the base layer, and the placeholder still holds its space.
+
+The container is `aria-hidden` and carries `aria-busy` on the region instead:
+a screen reader should be told "loading", not read eleven grey rectangles.
+{% endcomment %}
+{% with count=count|default:5 %}
+<div class="skeleton-block" aria-hidden="true">
+
+  {% if variant == "papers" %}
+    {# CV template gallery — page proportions, so the grid never reflows. #}
+    <ul class="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-8 lg:gap-y-14">
+      {% for _ in count|times %}
+        <li style="--stagger: {{ forloop.counter0 }}">
+          <div class="skeleton aspect-[1/1.414] w-full rounded-md"></div>
+          <div class="mt-3 space-y-2">
+            <div class="skeleton skeleton-title w-2/3"></div>
+            <div class="skeleton skeleton-line w-1/2"></div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+
+  {% elif variant == "stats" %}
+    {# Dashboard figures — same hairline and padding as `.figure-block`. #}
+    <dl class="space-y-4">
+      {% for _ in count|times %}
+        <div class="figure-block" style="--stagger: {{ forloop.counter0 }}">
+          <div class="skeleton skeleton-line w-24"></div>
+          <div class="skeleton mt-2 h-6 w-14"></div>
+        </div>
+      {% endfor %}
+    </dl>
+
+  {% elif variant == "report" %}
+    {# Analysis: score ring, verdict, three ranked fixes. #}
+    <div>
+      <div class="flex flex-wrap items-start gap-6">
+        <div class="skeleton size-[88px] shrink-0 rounded-full"></div>
+        <div class="min-w-0 flex-1 space-y-3">
+          <div class="skeleton h-7 w-3/5"></div>
+          <div class="skeleton skeleton-line w-full"></div>
+          <div class="skeleton skeleton-line w-11/12"></div>
+          <div class="skeleton skeleton-line w-4/5"></div>
+        </div>
+      </div>
+      <div class="mt-8 space-y-3 border-l-2 border-hairline pl-5">
+        {% for _ in 3|times %}
+          <div class="skeleton skeleton-line" style="--stagger: {{ forloop.counter0 }}; width: {{ forloop.counter|add:6 }}0%"></div>
+        {% endfor %}
+      </div>
+    </div>
+
+  {% elif variant == "text" %}
+    <div class="space-y-2.5">
+      {% for _ in count|times %}
+        <div class="skeleton skeleton-line {% if forloop.last %}w-2/3{% else %}w-full{% endif %}"
+             style="--stagger: {{ forloop.counter0 }}"></div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    {# `rows` — the default. Mirrors components/job_row.html exactly. #}
+    <ul class="rows">
+      {% for _ in count|times %}
+        <li class="row" style="--stagger: {{ forloop.counter0 }}">
+          <div class="flex gap-4">
+            <div class="skeleton size-11 shrink-0 rounded-lg"></div>
+            <div class="min-w-0 flex-1">
+              <div class="skeleton skeleton-title w-2/5"></div>
+              <div class="skeleton skeleton-line mt-2.5 w-1/4"></div>
+              <div class="mt-3.5 flex gap-4">
+                <div class="skeleton skeleton-line w-28"></div>
+                <div class="skeleton skeleton-line w-20"></div>
+                <div class="skeleton skeleton-line w-24"></div>
+              </div>
+              <div class="mt-3.5 flex gap-1.5">
+                <div class="skeleton h-6 w-16 rounded-sm"></div>
+                <div class="skeleton h-6 w-20 rounded-sm"></div>
+                <div class="skeleton h-6 w-14 rounded-sm"></div>
+              </div>
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+{% endwith %}

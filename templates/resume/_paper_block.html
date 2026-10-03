@@ -1,0 +1,51 @@
+{% comment %}
+One layout block, drawn.
+
+The switch is here rather than repeated in the four regions of `_paper.html`:
+a heading in the sidebar and a heading in the body are the same block with
+different surrounding CSS, and writing the markup twice is how they stopped
+matching last time.
+{% endcomment %}
+{% if block.kind == "name" %}
+  {% comment %}
+    `h2`, never `h1`. Every screen that draws a sheet already has a page
+    heading of its own — the editor and the print view name the document in
+    their header bar, and the gallery names the page. The name was an `h1`, so
+    the gallery shipped eleven of them and the print view two: a screen reader
+    being told the page starts over, once per CV on the screen.
+  {% endcomment %}
+  <h2 class="sheet-name">{{ block.text }}</h2>
+
+{% elif block.kind == "headline" %}
+  <p class="sheet-headline">{{ block.text }}</p>
+
+{% elif block.kind == "contact" %}
+  <p class="sheet-contact">
+    {% for item in block.items %}<span>{{ item }}</span>{% endfor %}
+  </p>
+
+{% elif block.kind == "heading" %}
+  <h3 class="sheet-heading">{{ block.text }}</h3>
+
+{% elif block.kind == "paragraph" %}
+  <p class="sheet-text">{{ block.text }}</p>
+
+{% elif block.kind == "list" %}
+  <ul class="sheet-list">
+    {% for item in block.items %}<li>{{ item }}</li>{% endfor %}
+  </ul>
+
+{% else %}
+  <div class="sheet-entry">
+    <p class="sheet-entry-head">
+      {% if block.text %}<span class="sheet-entry-title">{{ block.text }}</span>{% endif %}
+      {% if block.meta.org %}<span class="sheet-entry-org">— {{ block.meta.org }}</span>{% endif %}
+    </p>
+    {% if block.meta.dates %}<p class="sheet-dates">{{ block.meta.dates }}</p>{% endif %}
+    {% if block.items %}
+      <ul class="sheet-list">
+        {% for item in block.items %}<li>{{ item }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+{% endif %}

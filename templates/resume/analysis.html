@@ -1,0 +1,211 @@
+{% extends "layouts/app.html" %}
+{% load demo_ads %}
+{% comment %}
+CV analysis.
+
+Running an analysis is a POST, deliberately: it freezes a version and may call
+a model, and neither is something a browser refresh should repeat.
+{% endcomment %}
+
+{% block title %}CV analysis — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="CV analysis" text="What a recruiter's software sees, what your CV proves, and what to fix first." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl stack">
+    {% if not documents %}
+      <p class="text-content-muted">
+        No CVs yet. <a href="{% url 'resume:builder' %}" class="link-editorial">Start one</a>
+        and analysis will have something to read.
+      </p>
+    {% else %}
+      {% comment %}
+        The analysis is a model call: seconds, sometimes tens of them. The
+        button carries its own in-flight state (see `.btn.htmx-request`), and
+        `hx-disabled-elt` is what stops a second click paying for a second run
+        of the same report.
+      {% endcomment %}
+      <form class="card" hx-post="{% url 'resume:analysis_run' %}"
+            hx-target="#analysis-report" hx-swap="outerHTML"
+            hx-disabled-elt="find button[type=submit]">
+        {% csrf_token %}
+        <div class="card-body stack">
+          <div class="field">
+            <label class="label" for="analysis-document">Which CV</label>
+            <select class="input" id="analysis-document" name="document">
+              {% for option in documents %}
+                <option value="{{ option.public_id }}" {% if document and option.pk == document.pk %}selected{% endif %}>
+                  {{ option.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <p class="text-meta text-content-muted">
+            Every analysis reviews the whole CV on its own terms: what is missing, what is
+            weak, what software cannot read. No target job is needed.
+          </p>
+
+          <details class="rounded-lg border border-hairline" {% if analysis.target_role or analysis.job_id or analysis.advert %}open{% endif %}>
+            <summary class="cursor-pointer px-4 py-3 text-meta font-medium">
+              Also compare it with a role or a job advert <span class="font-normal text-content-subtle">(optional)</span>
+            </summary>
+            <div class="grid gap-5 border-t border-hairline px-4 pb-4 pt-4">
+          <div class="field">
+            <label class="label" for="analysis-role">What are you aiming at</label>
+            <input class="input" id="analysis-role" name="target_role" type="text"
+                   value="{{ analysis.target_role|default:'' }}"
+                   placeholder="Backend developer, data analyst, …">
+            <p class="text-caption text-content-subtle">
+              Optional. It changes what the review looks for, never the checks.
+            </p>
+          </div>
+
+          {% if target_jobs %}
+            {% comment %}
+              A posting on CareerAI (ENH-01). Compared against its structured
+              skills, so the report says exactly which of them the CV answers
+              and which it does not — and from there the assistant can ask
+              about each gap.
+            {% endcomment %}
+            <div class="field">
+              <label class="label" for="analysis-job">Or compare with a job on {{ site.name }}</label>
+              <select class="input" id="analysis-job" name="job">
+                <option value="">No particular job</option>
+                {% for option in target_jobs %}
+                  <option value="{{ option.public_id }}" {% if analysis.job_id == option.pk %}selected{% endif %}>
+                    {{ option.title }} at {{ option.company.name }}
+                  </option>
+                {% endfor %}
+              </select>
+              <p class="text-caption text-content-subtle">
+                Jobs you applied to or saved come first.
+              </p>
+            </div>
+          {% endif %}
+
+          {% comment %}
+            The advert itself, not just a role name.
+
+            Most applications a candidate makes are to a posting this platform
+            does not own, and "backend developer" carries no requirements — so
+            without this there was nothing to tailor against and the report
+            could not say which skills the role asked for. The advert is read
+            by the taxonomy rather than by a model, so what comes back is
+            reproducible and every matched term can be pointed at.
+          {% endcomment %}
+          <div class="field">
+            <label class="label" for="analysis-advert">Paste the job advert</label>
+            <textarea class="input" id="analysis-advert" name="advert" rows="7"
+                      placeholder="Paste the whole posting: responsibilities, requirements, everything.">{{ analysis.advert|default:'' }}</textarea>
+            <p class="text-caption text-content-subtle">
+              Optional, and the single thing that makes this report specific:
+              with it you get the skills that role asks for, which of them your
+              CV already answers, and which words a keyword search would miss.
+              Nothing is sent anywhere to read it.
+            </p>
+          </div>
+            </div>
+          </details>
+
+          <div>
+            {% comment %}
+              A metered action says what it will cost before it is taken. The
+              free plan grants one run a month, and a button that looks ready
+              and then answers "you have used this month's analysis" is a
+              button that lied.
+            {% endcomment %}
+            {% if analyses_left == 0 %}
+              <button type="submit" class="btn btn-primary" disabled>Analyse this CV</button>
+              <p class="mt-2 text-caption text-content-muted">
+                You have used this month's analysis. Your report below stays available.
+                <a href="{% url 'core:pricing' %}" class="link-editorial">Pro</a>
+                runs as many as you need.
+              </p>
+            {% else %}
+              <button type="submit" class="btn btn-primary">Analyse this CV</button>
+              {% if analyses_left %}
+                <p class="mt-2 text-caption text-content-subtle">
+                  {{ analyses_left }} analys{{ analyses_left|pluralize:"is,es" }} left this month.
+                </p>
+              {% endif %}
+            {% endif %}
+            <p class="mt-2 text-caption text-content-subtle">
+              This saves a version of your CV so the report always refers to an exact
+              document. If nothing has changed since your last version, no new one is made.
+            </p>
+          </div>
+        </div>
+      </form>
+
+      {% include "resume/_analysis_report.html" %}
+
+      {% if document %}
+        <p class="text-meta text-content-subtle">
+          Drafted rewrites are also listed in the
+          <a href="{% url 'resume:editor' document_id=document.public_id %}" class="link-editorial">editor</a>,
+          under Suggestions.
+        </p>
+
+        {% comment %}
+        Jobs that fit (MAT-02), from the same matching feed "Matched to me"
+        uses — its labels, its scores, its truth rules. Said plainly that it
+        reads the profile, and which CV skills it therefore cannot see yet.
+        {% endcomment %}
+        {% if cv_jobs or unlisted_skills %}
+          <section class="stack mt-8" aria-labelledby="cv-jobs-title">
+            <div class="stack-head">
+              <h2 id="cv-jobs-title" class="stack-title">Jobs that fit you</h2>
+              <a href="{% url 'jobs:recommended' %}" class="link-editorial">All matches</a>
+            </div>
+            <p class="mt-2 text-meta text-content-muted">
+              Ranked on the skills and experience on your profile; what each one
+              finds on this CV, and what it would still want, is listed with it.
+              {% if readiness %}
+                This CV: ATS
+                {% for item in readiness.requirements %}{% if item.key == "ats" %}<strong>{% if item.met %}Passing{% elif item.unchecked %}not checked since your last edit{% else %}Incomplete{% endif %}</strong>{% endif %}{% endfor %},
+                readiness <strong>{{ readiness.label }}</strong>.
+              {% endif %}
+            </p>
+            {% if cv_jobs %}
+              <ul class="rows mt-3">
+                {% for job in cv_jobs %}
+                  <li class="py-3">
+                    <div class="flex flex-wrap items-baseline justify-between gap-3">
+                      <a href="{% url 'jobs:detail' job.slug %}" class="link-editorial min-w-0">{{ job.title }} at {{ job.company }}</a>
+                      <span class="text-meta text-content-muted">{{ job.label }} · {{ job.score }}%</span>
+                    </div>
+                    {% if job.matched %}
+                      <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
+                        <span class="sr-only">On your CV:</span>
+                        {% for skill in job.matched %}<span class="inline-flex items-center gap-1 text-success-fg">{% icon "check" css_class="size-3.5" %}{{ skill }}</span>{% endfor %}
+                      </p>
+                    {% endif %}
+                    {% if job.missing_required or job.missing_preferred %}
+                      <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
+                        <span class="sr-only">Not on your CV:</span>
+                        {% for skill in job.missing_required %}<span class="inline-flex items-center gap-1 text-warning-fg">{% icon "warning" css_class="size-3.5" %}{{ skill }}</span>{% endfor %}
+                        {% for skill in job.missing_preferred %}<span class="inline-flex items-center gap-1 text-content-muted">{% icon "warning" css_class="size-3.5" %}{{ skill }} <span class="text-caption">(preferred)</span></span>{% endfor %}
+                      </p>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+            {% if unlisted_skills %}
+              <p class="mt-3 text-meta text-content-muted">
+                On this CV but not on your profile, so matching cannot count them yet:
+                {{ unlisted_skills|join:", " }}.
+                <a href="{% url 'dashboard:profile' %}" class="link-editorial">Add them to your profile</a>.
+              </p>
+            {% endif %}
+          </section>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+    {% comment %}Below the report and the jobs, never inside them.{% endcomment %}
+    {% demo_ad "analysis" %}
+  </div>
+{% endblock %}

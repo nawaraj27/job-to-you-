@@ -1,0 +1,249 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+Write or edit a posting.
+
+One form for both, because a create screen and an edit screen that drift apart
+is how a field ends up editable in one and not the other. `values` carries a
+rejected submission back so nobody retypes a description because a salary was
+the wrong way round.
+
+Skills, screening questions and the hiring team are not here: they are lists
+with their own add and remove actions, and they live on the posting's page
+where they can be changed one at a time without resubmitting the whole job.
+{% endcomment %}
+
+{% block title %}{% if job %}Edit {{ job.title }}{% else %}Post a job{% endif %} - {{ company.name }}{% endblock %}
+{% block page_heading %}{% if job %}Edit posting{% else %}Post a job{% endif %}{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    {% if job %}
+      Changes save immediately. Publishing is a separate decision.
+    {% else %}
+      This saves as a draft. Nothing is visible to candidates until you publish it.
+    {% endif %}
+  </p>
+{% endblock %}
+
+{% block page_body %}
+{% with v=values %}
+<form method="post" class="max-w-3xl space-y-8">
+  {% csrf_token %}
+  {% comment %}
+    The optimistic lock. Two recruiters editing one posting is ordinary in a
+    team, and a silent lost update is how a salary band quietly reverts
+    (DEVELOPER.md §2.7).
+  {% endcomment %}
+  {% if job %}<input type="hidden" name="row_version" value="{{ job.row_version }}">{% endif %}
+
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-semibold">The role</legend>
+
+    <div>
+      <label class="label" for="title">Title</label>
+      <input class="input" id="title" name="title" required maxlength="160"
+             value="{{ v.title|default_if_none:'' }}"
+             placeholder="Senior Backend Engineer">
+    </div>
+
+    <div>
+      <label class="label" for="description">Description</label>
+      <textarea class="input" id="description" name="description" rows="8"
+                placeholder="What the role is, who it reports to, and what the first six months look like."
+                >{{ v.description|default_if_none:'' }}</textarea>
+      <p class="mt-1 text-meta text-content-subtle">
+        The first paragraph is used as the summary on the listing.
+      </p>
+    </div>
+
+    {% comment %}
+      Three list fields, one line per item. A textarea rather than a repeating
+      row widget: people paste these from a document, and a widget that needs a
+      click per bullet turns a paste into fifteen clicks.
+    {% endcomment %}
+    <div>
+      <label class="label" for="responsibilities">What they'll do</label>
+      <textarea class="input" id="responsibilities" name="responsibilities" rows="5"
+                placeholder="One per line."
+                >{{ v.responsibilities|default_if_none:'' }}</textarea>
+    </div>
+
+    <div>
+      <label class="label" for="requirements">What you're asking for</label>
+      <textarea class="input" id="requirements" name="requirements" rows="5"
+                placeholder="One per line."
+                >{{ v.requirements|default_if_none:'' }}</textarea>
+    </div>
+
+    <div>
+      <label class="label" for="benefits">What's on offer</label>
+      <textarea class="input" id="benefits" name="benefits" rows="4"
+                placeholder="One per line."
+                >{{ v.benefits|default_if_none:'' }}</textarea>
+    </div>
+  </fieldset>
+
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-semibold">Where and how</legend>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label" for="workplace">Work type</label>
+        <select class="input" id="workplace" name="workplace">
+          {% for value, label in workplaces %}
+            <option value="{{ value }}"
+                    {% if value == v.workplace %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% comment %}
+        Remote from where. `workplace = remote` on its own does not answer it,
+        and its absence is the most common complaint on every job board ever
+        built — so a database CHECK refuses a remote posting without a scope.
+      {% endcomment %}
+      <div>
+        <label class="label" for="remote_scope">Remote from</label>
+        <select class="input" id="remote_scope" name="remote_scope">
+          {% for value, label in remote_scopes %}
+            <option value="{{ value }}"
+                    {% if value == v.remote_scope %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="label" for="location">Location</label>
+        <select class="input" id="location" name="location_id">
+          <option value="">Not given</option>
+          {% for place in locations %}
+            <option value="{{ place.pk }}"
+                    {% if place.pk|stringformat:'s' == v.location_id|stringformat:'s' %}selected{% endif %}>{{ place.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="label" for="category">Category</label>
+        <select class="input" id="category" name="category_id">
+          <option value="">Uncategorised</option>
+          {% for category in categories %}
+            <option value="{{ category.pk }}"
+                    {% if category.pk|stringformat:'s' == v.category_id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="label" for="employment_type">Contract</label>
+        <select class="input" id="employment_type" name="employment_type">
+          {% for value, label in employment_types %}
+            <option value="{{ value }}"
+                    {% if value == v.employment_type %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="label" for="experience_level">Experience</label>
+        <select class="input" id="experience_level" name="experience_level">
+          {% for value, label in experience_levels %}
+            <option value="{{ value }}"
+                    {% if value == v.experience_level %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-semibold">Pay</legend>
+    <p class="text-sm text-content-muted">
+      Postings that state a salary get materially more applications. Both figures are
+      stored exactly as typed, alongside an annualised figure used only for comparison.
+    </p>
+
+    <div class="grid gap-4 sm:grid-cols-4">
+      <div>
+        <label class="label" for="salary_min">From</label>
+        <input class="input" id="salary_min" name="salary_min" inputmode="decimal"
+               value="{{ v.salary_min|default_if_none:'' }}">
+      </div>
+      <div>
+        <label class="label" for="salary_max">To</label>
+        <input class="input" id="salary_max" name="salary_max" inputmode="decimal"
+               value="{{ v.salary_max|default_if_none:'' }}">
+      </div>
+      <div>
+        <label class="label" for="currency">Currency</label>
+        <input class="input" id="currency" name="currency" maxlength="3" placeholder="NPR"
+               value="{{ v.currency|default_if_none:'' }}">
+      </div>
+      <div>
+        <label class="label" for="period">Per</label>
+        <select class="input" id="period" name="period">
+          {% for value in "year,month,week,day,hour"|split:"," %}
+            <option value="{{ value }}" {% if value == v.period %}selected{% endif %}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <label class="flex items-center gap-2 text-sm">
+      {# The hidden twin says the checkbox was on screen; without it "off" and #}
+      {# "not submitted" are the same request. #}
+      <input type="hidden" name="salary_visible_present" value="1">
+      <input type="checkbox" name="salary_visible"
+             {% if v.salary_visible %}checked{% endif %}>
+      Show the salary on the listing
+    </label>
+  </fieldset>
+
+  <fieldset class="space-y-4">
+    <legend class="text-lg font-semibold">Applications</legend>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label" for="apply_mode">Where people apply</label>
+        <select class="input" id="apply_mode" name="apply_mode">
+          {% for value, label in apply_modes %}
+            <option value="{{ value }}"
+                    {% if value == v.apply_mode %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="label" for="external_url">Application URL</label>
+        <input class="input" id="external_url" name="external_url" type="url"
+               value="{{ v.external_url|default_if_none:'' }}"
+               placeholder="Required if applications go to your own site">
+      </div>
+      <div>
+        <label class="label" for="closes_at">Closing date</label>
+        <input class="input" id="closes_at" name="closes_at" type="date"
+               value="{{ v.closes_at|default_if_none:'' }}">
+        <p class="mt-1 text-meta text-content-subtle">
+          The posting closes itself on this date. Leave it empty to close it by hand.
+        </p>
+      </div>
+      <div>
+        <label class="label" for="application_cooldown_days">Reapply after (days)</label>
+        <input class="input" id="application_cooldown_days" name="application_cooldown_days"
+               inputmode="numeric" min="0"
+               value="{{ v.application_cooldown_days|default_if_none:'0' }}">
+      </div>
+    </div>
+  </fieldset>
+
+  <div class="flex flex-wrap gap-3 border-t border-hairline pt-6">
+    <button class="btn btn-primary" type="submit">
+      {% if job %}Save changes{% else %}Save draft{% endif %}
+    </button>
+    {% if job %}
+      <a class="btn btn-quiet" href="{% url 'employer:job_detail' company.slug job.public_id %}">Cancel</a>
+    {% else %}
+      <a class="btn btn-quiet" href="{% url 'employer:job_list' company.slug %}">Cancel</a>
+    {% endif %}
+  </div>
+</form>
+{% endwith %}
+{% endblock %}

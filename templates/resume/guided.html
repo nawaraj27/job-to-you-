@@ -1,0 +1,47 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+The guided builder: what the analysis found, then one question at a time.
+
+"What we found" comes first (`_improvement_plan.html`, guided mode): every
+point from the candidate's analysis with what was detected, why it matters,
+where it is and what to add — so they never have to remember what the report
+said. Answers are drafted into the entry they are about, in the background
+(`_improvement_job.html` shows each stage), and arrive as suggestions.
+
+The step list is `_guided_steps.html` so that both of its controls can redraw
+it out of band — it sits outside the region the editor swaps. Beside the
+editor only on very wide screens; above it otherwise, so the editor keeps the
+width its own two columns need.
+{% endcomment %}
+
+{% block title %}Guided builder — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Guided builder" text="Work through what your CV is missing, one point at a time. Everything goes into the same CV the editor opens, and nothing is added until you accept it." %}
+{% endblock %}
+
+{% block app_body %}
+  {% include "resume/_example_notice.html" %}
+  <div class="stack">
+    <div class="space-y-4">
+      {% include "resume/_improvement_job.html" %}
+      {% include "resume/_improvement_plan.html" %}
+    </div>
+
+    <div class="grid gap-10 2xl:grid-cols-[17rem_minmax(0,1fr)]">
+      <nav class="min-w-0" aria-label="Steps">
+        <div class="grid gap-6 md:grid-cols-2 2xl:grid-cols-1">
+          <div>{% include "resume/_guided_steps.html" %}</div>
+          <div>
+            {% include "resume/_readiness.html" %}
+            <a href="{% url 'resume:editor' document_id=document.public_id %}" class="link-editorial mt-4 inline-block text-meta">Switch to the full editor</a>
+          </div>
+        </div>
+      </nav>
+
+      <div class="min-w-0">
+        {% include "resume/_editor_live.html" %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% comment %}
+Shown on arrival when the candidate asked to start from the worked example.
+
+Outside the editor's swap region, so an edit does not redraw it, and driven by
+the query parameter rather than by a flag on the draft: it is true of this page
+load, not of the document — a CV stops being example-derived the moment the
+first field is replaced, and no column could honestly say when that happened.
+
+The design system's own alert, at `info`. The point is the sentence.
+{% endcomment %}
+{% if request.GET.started == "example" %}
+  <div class="mb-6">
+    {% include "components/alert.html" with level="info" title="This CV starts from a worked example" text="Every section is filled in so you can see what belongs where. Your name and email are already yours — replace the rest with your own. Nothing is sent anywhere until you export it or attach it to an application." %}
+  </div>
+{% endif %}

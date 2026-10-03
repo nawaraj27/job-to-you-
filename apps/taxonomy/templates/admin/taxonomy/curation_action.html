@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{# Confirmation step for the curation actions. Merging and deprecating change
+   what every existing profile means, so neither happens straight off a
+   dropdown — the curator sees exactly which rows are affected first. #}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+  <p>{{ intro }}</p>
+
+  <ul>
+    {% for skill in queryset %}
+      <li><strong>{{ skill.name }}</strong> ({{ skill.slug }}) — {{ skill.get_status_display }}</li>
+    {% endfor %}
+  </ul>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    {% for skill in queryset %}
+      <input type="hidden" name="_selected_action" value="{{ skill.pk }}">
+    {% endfor %}
+    <input type="hidden" name="action" value="{{ action }}">
+    <input type="hidden" name="confirmed" value="1">
+    <input type="submit" class="default" value="{{ submit_label }}">
+    <a href="{{ request.path }}" class="button cancel-link">{% translate "Cancel" %}</a>
+  </form>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% comment %}
+Empty state.
+
+  {% include "components/empty_state.html" with icon="briefcase" title="No saved jobs yet"
+     text="Save a role from search and it lands here." action_label="Browse jobs" action_url=jobs_url %}
+
+An empty state is a screen doing its job, not a screen that failed: it names
+what will appear here, and offers the one action that fills it. Never a shrug
+illustration, never "nothing to see".
+{% endcomment %}
+<div class="empty">
+  {% if icon %}
+    <span class="empty-mark">{% icon icon css_class="size-5" %}</span>
+  {% endif %}
+  <div>
+    <p class="text-body-lg font-semibold">{{ title }}</p>
+    {% if text %}<p class="mt-1.5 text-sm leading-relaxed text-content-muted">{{ text }}</p>{% endif %}
+  </div>
+  {% if action_url %}
+    <a href="{{ action_url }}" class="btn btn-secondary btn-sm mt-1">
+      {% if action_icon %}{% icon action_icon css_class="size-4" %}{% endif %}{{ action_label }}
+    </a>
+  {% endif %}
+</div>

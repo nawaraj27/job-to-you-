@@ -1,0 +1,99 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Assisted CV, the way in (docs/Assisted-CV.md).
+
+One thing on this screen matters: the box where the candidate says what CV
+they want and what they have done. Everything else is there to help them fill
+it: how it works in three short steps, and example prompts that fill the box
+with one click. Secondary routes (start from a template, upload a CV) sit
+below, smaller.
+
+Posting creates an unsaved draft and sends the description as the first turn.
+Nothing the candidate has saved elsewhere is used unless they tick the box.
+{% endcomment %}
+
+{% block title %}Assisted CV — {{ site.name }}{% endblock %}
+
+{% block app_head %}{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl">
+    <section class="assist-hero reveal" aria-labelledby="assist-title">
+      <p class="overline">Assisted CV</p>
+      <h1 id="assist-title" class="mt-2 font-serif text-display">Describe the CV you want</h1>
+      <p class="mt-3 max-w-[60ch] text-body-lg text-content-muted">
+        Say what kind of job you are aiming for and what you have done, in your own words.
+        The assistant asks about anything it needs, then drafts your CV from your answers.
+        You check every line before it is saved.
+      </p>
+
+      {% if error %}
+        <div class="mt-6">{% include "components/alert.html" with level="error" title="Not started yet" text=error %}</div>
+      {% endif %}
+
+      <form method="post" action="{% url 'resume:assistant_start' %}" class="assist-composer mt-6">
+        {% csrf_token %}
+        <input type="hidden" name="token" value="{{ form_token }}">
+        <label for="assist-text" class="sr-only">Describe the CV you want and the work you have done</label>
+        <textarea id="assist-text" name="text" rows="6" required minlength="15" maxlength="4000"
+                  class="assist-input"
+                  placeholder="For example: I want a CV for customer support roles. I have spent two years answering billing questions at a telecom company and I train new starters.">{{ text|default:'' }}</textarea>
+
+        <div class="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <div class="field">
+            <label for="assist-target" class="label">Job you are aiming for <span class="font-normal text-content-subtle">(optional)</span></label>
+            <input id="assist-target" name="target" maxlength="120" class="input" value="{{ target|default:'' }}"
+                   placeholder="Staff nurse, junior accountant, backend developer…">
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg w-full sm:w-auto">
+            {% icon "send" css_class="size-4" %}Start my CV
+          </button>
+        </div>
+
+        {% if has_saved_material %}
+          <label class="mt-4 flex items-start gap-2.5 text-meta">
+            <input type="checkbox" name="reuse" value="1" class="mt-0.5 size-4 accent-brand-600">
+            <span>
+              Start from what I have already given {{ site.name }}{% if parsed_upload %}: my uploaded CV, {{ parsed_upload.original_filename }}{% endif %}.
+              <span class="block text-content-subtle">Leave unticked to start from a blank page. Nothing is shared with employers either way.</span>
+            </span>
+          </label>
+        {% endif %}
+      </form>
+
+      <div class="mt-6" aria-labelledby="examples-title">
+        <h2 id="examples-title" class="text-meta font-medium text-content-muted">Or start from an example and change it</h2>
+        <ul class="mt-2 flex flex-wrap gap-2">
+          {% for example in examples %}
+            <li>
+              <button type="button" class="prompt-chip" data-fill="#assist-text" data-fill-text="{{ example }}">
+                {{ example|truncatechars:72 }}
+              </button>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    <ol class="mt-12 grid gap-4 sm:grid-cols-3" aria-label="How it works">
+      <li class="card card-body">
+        <p class="overline">1 · Describe</p>
+        <p class="mt-1 text-meta text-content-muted">Tell it about your work as you would tell a friend.</p>
+      </li>
+      <li class="card card-body">
+        <p class="overline">2 · Answer</p>
+        <p class="mt-1 text-meta text-content-muted">It asks only for what is missing. "I don't remember" is a fine answer.</p>
+      </li>
+      <li class="card card-body">
+        <p class="overline">3 · Review and save</p>
+        <p class="mt-1 text-meta text-content-muted">Accept the lines you agree with, edit anything, then save.</p>
+      </li>
+    </ol>
+
+    <p class="mt-8 text-meta text-content-subtle">
+      Rather work another way?
+      <a href="{% url 'resume:builder' %}" class="link-editorial">Start from a template</a> or
+      <a href="{% url 'resume:upload' %}" class="link-editorial">upload the CV you have</a>.
+    </p>
+  </div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Find an account (SRS §2.3). Nothing is listed until somebody searches: a page
+that opens on every person on the platform is a directory, not a support tool.
+{% endcomment %}
+
+{% block title %}People - staff{% endblock %}
+{% block page_heading %}People{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">Search by email address or name.</p>
+{% endblock %}
+
+{% block page_body %}
+  {% include "staff/_tabs.html" %}
+
+  <form method="get" class="flex flex-wrap items-end gap-3" role="search">
+    <div class="field">
+      <label for="people-q" class="label">Email or name</label>
+      <input id="people-q" name="q" class="input" value="{{ query }}" maxlength="100" required>
+    </div>
+    <button type="submit" class="btn btn-secondary">Search</button>
+  </form>
+
+  {% if query %}
+    <div class="mt-6 overflow-x-auto">
+      <table class="table">
+        <caption class="sr-only">Accounts matching {{ query }}</caption>
+        <thead><tr><th scope="col">Account</th><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Joined</th></tr></thead>
+        <tbody>
+          {% for person in page %}
+            <tr>
+              <th scope="row"><a href="{% url 'staff:person' person.pk %}" class="link-editorial break-all">{{ person.email }}</a></th>
+              <td>{{ person.full_name }}</td>
+              <td>{% if person.is_active %}Active{% else %}<span class="badge badge-critical">Suspended</span>{% endif %}</td>
+              <td class="whitespace-nowrap">{{ person.date_joined|date:"j M Y" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="text-content-muted">Nobody matches.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

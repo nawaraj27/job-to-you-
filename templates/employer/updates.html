@@ -1,0 +1,95 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+News and events for the company's followers (FOL-03).
+
+Posting one tells every follower in the app (and by email if they asked), under
+their "Companies you follow" setting. That is said on the button, because a
+form that notifies people should say so before it does.
+{% endcomment %}
+
+{% block title %}Updates for followers - {{ company.name }}{% endblock %}
+{% block page_heading %}Updates for followers{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    News and events on
+    <a class="link-editorial" href="{% url 'jobs:company' company.slug %}#updates">your company page</a>.
+    {{ followers }} {{ followers|pluralize:"person follows,people follow" }} {{ company.name }}.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+{% if can_edit %}
+  <form method="post" class="card max-w-2xl" x-data="{ kind: 'announcement' }">
+    {% csrf_token %}
+    <div class="card-body space-y-5">
+      <fieldset>
+        <legend class="label">What is it?</legend>
+        <div class="mt-2 flex flex-wrap gap-4">
+          <label class="flex items-center gap-2">
+            <input type="radio" name="kind" value="announcement" x-model="kind" checked> Announcement
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="kind" value="event" x-model="kind"> Event
+          </label>
+        </div>
+      </fieldset>
+
+      <div>
+        <label class="label" for="update-title">Title</label>
+        <input class="input" id="update-title" name="title" required maxlength="160">
+      </div>
+
+      <div x-show="kind === 'event'" x-cloak class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="label" for="update-starts">Date and time</label>
+          <input class="input" id="update-starts" name="starts_at" type="datetime-local">
+        </div>
+        <div>
+          <label class="label" for="update-location">Where</label>
+          <input class="input" id="update-location" name="location" maxlength="160"
+                 placeholder="Office, city, or an online link">
+        </div>
+      </div>
+
+      <div>
+        <label class="label" for="update-body">Details</label>
+        <textarea class="input" id="update-body" name="body" rows="4" maxlength="2000"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Post and tell followers</button>
+    </div>
+  </form>
+{% else %}
+  <p class="text-content-muted">Only people who can edit the company profile can post updates.</p>
+{% endif %}
+
+<section class="stack mt-10" aria-labelledby="updates-list">
+  <div class="stack-head"><h2 id="updates-list" class="stack-title">Posted</h2></div>
+  <ul class="mt-4 space-y-4">
+    {% for update in updates %}
+      <li class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="font-medium">{{ update.title }}</p>
+          <p class="mt-1 text-meta text-content-muted">
+            {{ update.get_kind_display }}
+            {% if update.starts_at %} · {{ update.starts_at|date:"D j M, H:i" }}{% endif %}
+            {% if update.location %} · {{ update.location }}{% endif %}
+            · posted {{ update.created_at|date:"j M Y" }}
+            {% if update.withdrawn_at %} · <span class="badge badge-neutral">Withdrawn</span>{% endif %}
+          </p>
+        </div>
+        {% if can_edit and not update.withdrawn_at %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="command" value="withdraw">
+            <input type="hidden" name="update" value="{{ update.public_id }}">
+            <button type="submit" class="btn btn-quiet btn-sm">Withdraw</button>
+          </form>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="text-content-muted">Nothing posted yet.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

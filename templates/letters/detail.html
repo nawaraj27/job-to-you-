@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+One cover letter.
+
+The whole screen is the editor, because a letter is a thing you rewrite rather
+than a record you inspect. What surrounds it is honesty about the draft: where
+the words came from, and — when a model wrote them — what the model could not
+claim.
+{% endcomment %}
+
+{% block title %}{{ letter.title|default:"Cover letter" }} — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title=letter.title text="Yours to change. Nothing is sent until you attach it to an application." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl stack">
+    <a href="{% url 'letters:list' %}" class="link-editorial">All letters</a>
+    {% include "letters/_editor.html" %}
+  </div>
+{% endblock %}

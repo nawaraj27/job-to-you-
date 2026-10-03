@@ -1,0 +1,106 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+The company's public page, edited from the inside.
+
+Everything here is read by candidates on /jobs/company/<slug>/. That is worth
+saying on the screen: an employer filling in a form is more careful when they
+know who reads it.
+{% endcomment %}
+
+{% block title %}Company profile - {{ company.name }}{% endblock %}
+{% block page_heading %}Company profile{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    What candidates see on your page and against every posting.
+    <a class="link-editorial" href="{% url 'jobs:company' company.slug %}">View it as they do</a>.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+<form method="post" class="max-w-2xl space-y-5">
+  {% csrf_token %}
+  {# Optimistic lock: two admins editing one profile is ordinary, and #}
+  {# last-write-wins on a description is an unanswerable support ticket. #}
+  <input type="hidden" name="row_version" value="{{ company.row_version }}">
+
+  <div>
+    <label class="label" for="name">Name</label>
+    <input class="input" id="name" name="name" required maxlength="200"
+           value="{{ company.name }}" {% if not can_edit %}disabled{% endif %}>
+  </div>
+
+  <div>
+    <label class="label" for="legal_name">Registered name</label>
+    <input class="input" id="legal_name" name="legal_name" maxlength="200"
+           value="{{ company.legal_name }}" {% if not can_edit %}disabled{% endif %}>
+  </div>
+
+  <div>
+    <label class="label" for="tagline">One line about you</label>
+    <input class="input" id="tagline" name="tagline" maxlength="255"
+           value="{{ company.tagline }}" {% if not can_edit %}disabled{% endif %}
+           placeholder="Billing infrastructure for subscription businesses.">
+  </div>
+
+  <div>
+    <label class="label" for="about">About</label>
+    <textarea class="input" id="about" name="about" rows="8"
+              {% if not can_edit %}disabled{% endif %}
+              placeholder="Leave a blank line between paragraphs.">{{ about_text }}</textarea>
+    <p class="mt-1 text-meta text-content-subtle">
+      Specifics carry more than adjectives: team size, what each team owns, how you release.
+    </p>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="industry">Industry</label>
+      <select class="input" id="industry" name="industry_id" {% if not can_edit %}disabled{% endif %}>
+        <option value="">Not stated</option>
+        {% for industry in industries %}
+          <option value="{{ industry.pk }}"
+                  {% if industry.pk == company.industry_id %}selected{% endif %}>{{ industry.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="label" for="location">Head office</label>
+      <select class="input" id="location" name="location_id" {% if not can_edit %}disabled{% endif %}>
+        <option value="">Not stated</option>
+        {% for place in locations %}
+          <option value="{{ place.pk }}"
+                  {% if place.pk == company.location_id %}selected{% endif %}>{{ place.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="label" for="size_band">Size</label>
+      <input class="input" id="size_band" name="size_band" maxlength="20"
+             value="{{ company.size_band }}" {% if not can_edit %}disabled{% endif %}
+             placeholder="120-250 employees">
+    </div>
+
+    <div>
+      <label class="label" for="founded">Founded</label>
+      <input class="input" id="founded" name="founded" maxlength="8"
+             value="{{ company.founded }}" {% if not can_edit %}disabled{% endif %} placeholder="2016">
+    </div>
+  </div>
+
+  <div>
+    <label class="label" for="website">Website</label>
+    <input class="input" id="website" name="website" type="url"
+           value="{{ company.website }}" {% if not can_edit %}disabled{% endif %}>
+  </div>
+
+  {% if can_edit %}
+    <button class="btn btn-primary" type="submit">Save profile</button>
+  {% else %}
+    <p class="text-sm text-content-subtle">
+      Editing the company profile needs admin access.
+    </p>
+  {% endif %}
+</form>
+{% endblock %}

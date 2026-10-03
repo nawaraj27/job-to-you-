@@ -1,0 +1,55 @@
+{% comment %}
+Result count + pager.
+
+  {% include "components/pagination.html" with page=page %}
+
+page: {number, total_pages, count, per_page, start, end}
+
+Numbered pages rather than infinite scroll: a job search is something people
+leave and come back to, and an infinite list has no address.
+{% endcomment %}
+<nav class="flex flex-wrap items-center justify-between gap-4 border-t border-hairline pt-5"
+     aria-label="Pagination">
+  <p class="text-meta text-content-muted">
+    Showing <span class="font-medium text-content tabular-nums">{{ page.start }}–{{ page.end }}</span>
+    of <span class="font-medium text-content tabular-nums">{{ page.count }}</span> roles
+  </p>
+
+  {% comment %}
+    Every link keeps the current search, filters and sort — `{% query_replace %}`
+    swaps only `page`. These were written as `?page=N`, which discarded
+    everything else: paging a filtered search silently cleared the filters and
+    the results changed for a reason nobody could see.
+
+    Previous and Next are real links when there is somewhere to go and inert
+    when there is not, rather than a permanently disabled Previous.
+  {% endcomment %}
+  <div class="flex items-center gap-1.5">
+    {% if page.number > 1 %}
+      <a href="{% query_replace page=page.previous %}" class="btn btn-secondary btn-sm" rel="prev">
+        {% icon "chevron-left" css_class="size-4" %}Previous
+      </a>
+    {% else %}
+      <span class="btn btn-secondary btn-sm" aria-disabled="true">
+        {% icon "chevron-left" css_class="size-4" %}Previous
+      </span>
+    {% endif %}
+
+    {% for n in page.numbers %}
+      <a href="{% query_replace page=n %}"
+         class="btn btn-sm {% if n == page.number %}btn-secondary{% else %}btn-ghost{% endif %} tabular-nums"
+         {% if n == page.number %}aria-current="page"{% endif %}
+         aria-label="Page {{ n }}{% if n == page.number %}, current page{% endif %}">{{ n }}</a>
+    {% endfor %}
+
+    {% if page.number < page.total_pages %}
+      <a href="{% query_replace page=page.next %}" class="btn btn-secondary btn-sm" rel="next">
+        Next{% icon "chevron-right" css_class="size-4" %}
+      </a>
+    {% else %}
+      <span class="btn btn-secondary btn-sm" aria-disabled="true">
+        Next{% icon "chevron-right" css_class="size-4" %}
+      </span>
+    {% endif %}
+  </div>
+</nav>

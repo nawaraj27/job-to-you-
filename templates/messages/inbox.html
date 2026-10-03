@@ -1,0 +1,156 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+The candidate's inbox.
+
+Threads on the left, one conversation on the right — the shape every messaging
+interface has, because it is the one people already know how to use.
+
+Mute, block and report live on the open thread rather than behind a settings
+page: the moment somebody needs them is the moment they are reading the
+message. They are not presented as equals. Muting is one button; blocking is
+behind a disclosure with its consequences written out, because it revokes the
+company's access to the profile as well as ending the thread.
+{% endcomment %}
+
+{% block title %}Messages — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Messages" text="Companies can only write to you if you applied to them or opted in. You can mute, block or report any of them." %}
+{% endblock %}
+
+{% block app_body %}
+{% if threads %}
+  <div class="grid gap-8 lg:grid-cols-[18rem_1fr]">
+
+    {# --- Threads --- #}
+    {% comment %}
+      min-w-0: a grid item will not shrink below its content, and the truncated
+      thread titles are one long unbreakable line — the list pushed the page
+      two pixels wider than a 375 px phone.
+    {% endcomment %}
+    <aside class="min-w-0">
+      <ul class="divide-y divide-hairline">
+        {% for item in threads %}
+          <li>
+            <a href="?thread={{ item.public_id }}"
+               class="flex items-start gap-3 py-3 {% if thread and thread.pk == item.pk %}font-semibold{% endif %}">
+              <span class="min-w-0 grow">
+                <span class="block truncate">{{ item.company.name }}</span>
+                <span class="block truncate text-meta font-normal text-content-muted">
+                  {% if item.job %}{{ item.job.title }}{% else %}General{% endif %}
+                  {% if item.last_message_at %}· {{ item.last_message_at|timesince }} ago{% endif %}
+                </span>
+                {% if item.state == "blocked" %}
+                  <span class="badge badge-neutral mt-1">Blocked</span>
+                {% elif item.candidate_muted_at %}
+                  <span class="badge badge-neutral mt-1">Muted</span>
+                {% endif %}
+              </span>
+              {% with unread=item.unread_for_candidate %}
+                {% if unread %}
+                  <span class="badge badge-accent shrink-0 tabular-nums">{{ unread }}</span>
+                {% endif %}
+              {% endwith %}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </aside>
+
+    {# --- One conversation --- #}
+    <div class="min-w-0">
+      {% if thread %}
+        <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-hairline pb-3">
+          <div class="min-w-0">
+            <h2 class="text-lg font-semibold">{{ thread.company.name }}</h2>
+            <p class="text-meta text-content-muted">
+              {% if thread.job %}
+                About <a class="underline [text-underline-offset:0.2em]"
+                         href="{{ thread.job.get_absolute_url }}">{{ thread.job.title }}</a>
+              {% else %}
+                General enquiry
+              {% endif %}
+            </p>
+          </div>
+
+          <form method="post" class="flex items-center gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="thread" value="{{ thread.public_id }}">
+            <button class="btn btn-quiet btn-sm" type="submit" name="action" value="mute">
+              {% if thread.candidate_muted_at %}Unmute{% else %}Mute{% endif %}
+            </button>
+          </form>
+        </div>
+
+        {% include "messages/_thread.html" %}
+
+        {% if thread.state == "blocked" %}
+          <p class="border-t border-hairline pt-4 text-sm text-content-muted">
+            You blocked {{ thread.company.name }}. They cannot write to you or see your profile.
+          </p>
+        {% else %}
+          <form method="post" class="border-t border-hairline pt-4" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="thread" value="{{ thread.public_id }}">
+            <label class="sr-only" for="body">Your reply</label>
+            <textarea class="input" id="body" name="body" rows="3" required maxlength="8000"
+                      placeholder="Write a reply"></textarea>
+            <label class="label mt-2" for="attachments">Attach files (optional)</label>
+            <input class="input" id="attachments" name="attachments" type="file" multiple
+                   accept=".pdf,.docx,.png,.jpg,.jpeg" aria-describedby="attachments-hint">
+            <p class="mt-1 text-caption text-content-subtle" id="attachments-hint">
+              Up to {{ max_attachments }} PDF, Word or image files. Each is checked for viruses
+              before anyone can open it, and only {{ thread.company.name }} can.
+            </p>
+            <button class="btn btn-primary mt-2" type="submit" name="action" value="send">
+              Send
+            </button>
+          </form>
+
+          {% comment %}
+            The two controls that end things, kept together and behind a
+            disclosure so neither is pressed by accident.
+          {% endcomment %}
+          <details class="mt-6 border-t border-hairline pt-4">
+            <summary class="cursor-pointer text-meta font-medium text-content-muted">
+              Report or block this company
+            </summary>
+
+            <form method="post" class="mt-3 space-y-3">
+              {% csrf_token %}
+              <input type="hidden" name="thread" value="{{ thread.public_id }}">
+              <label class="block">
+                <span class="label">What is wrong</span>
+                <select class="input" name="reason">
+                  {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                </select>
+              </label>
+              <label class="block">
+                <span class="label">Anything you want to add</span>
+                <textarea class="input" name="detail" rows="2"></textarea>
+              </label>
+              <div class="flex flex-wrap gap-2">
+                <button class="btn btn-secondary btn-sm" type="submit" name="action" value="report">
+                  Report to our team
+                </button>
+                <button class="btn btn-quiet btn-sm" type="submit" name="action" value="block">
+                  Block {{ thread.company.name }}
+                </button>
+              </div>
+              <p class="text-meta leading-relaxed text-content-subtle">
+                Blocking ends this conversation, hides your profile from them, and withdraws
+                their access to anything of yours they could see. It does not withdraw an
+                application you already sent.
+              </p>
+            </form>
+          </details>
+        {% endif %}
+      {% else %}
+        <p class="text-content-muted">Choose a conversation.</p>
+      {% endif %}
+    </div>
+  </div>
+{% else %}
+  {% include "components/empty_state.html" with icon="message" title="No messages" text="Companies can write to you once you have applied to them, or if you are in a talent pool you opted into. Nobody can message you out of the blue." %}
+{% endif %}
+{% endblock %}

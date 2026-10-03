@@ -1,0 +1,35 @@
+{% extends "layouts/auth.html" %}
+
+{% block title %}Create your account — {{ site.name }}{% endblock %}
+{% block auth_title %}Create your account{% endblock %}
+{% block auth_subtitle %}One account covers your CV, applications, and interviews.{% endblock %}
+
+{% block auth_body %}
+  <form method="post" class="space-y-4" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      {% include "components/alert.html" with level="error" text=form.non_field_errors.0 %}
+    {% endif %}
+
+    {% include "components/form_field.html" with field=form.signup_intent %}
+    {% include "components/form_field.html" with field=form.full_name %}
+    {% include "components/form_field.html" with field=form.email %}
+    {% include "components/form_field.html" with field=form.password1 hint="At least 8 characters, not all numbers." %}
+    {% include "components/form_field.html" with field=form.password2 %}
+
+    <button type="submit" class="btn btn-primary btn-block btn-lg">Create account</button>
+
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+    <p class="text-meta leading-relaxed text-content-subtle">
+      By continuing you agree to our
+      <a href="{% url 'core:terms' %}" class="underline hover:text-content">Terms</a> and
+      <a href="{% url 'core:privacy' %}" class="underline hover:text-content">Privacy Policy</a>.
+    </p>
+  </form>
+{% endblock %}
+
+{% block auth_footer %}
+  Already have an account? <a href="{% url 'accounts:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}" class="font-medium text-accent-content hover:underline">Sign in</a>
+{% endblock %}

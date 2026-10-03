@@ -1,0 +1,254 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+Employer analytics (SRS §16.2).
+
+Every number here is read from a nightly rollup, which is why it loads the same
+on the day a posting goes viral as on any other day.
+
+The response nudge sits at the top when there is one. It is a rate rather than a
+scolding — an employer replying to two in three is doing better than most of
+this market, and a page that told them they were failing would be a page they
+stop opening.
+
+Yesterday is the latest day with data, deliberately: a partial day beside
+complete ones invites the wrong conclusion every morning.
+{% endcomment %}
+
+{% block title %}Analytics - {{ company.name }}{% endblock %}
+{% block page_heading %}Analytics{% endblock %}
+{% block page_intro %}
+  {% comment %}
+    Says when, not "overnight".
+
+    "Updated overnight" is a promise about a job that may not have run. An
+    employer reading "0 interviews" on the same portal that shows one booked
+    for Tuesday needs to know which number is older, and the answer is a date.
+  {% endcomment %}
+  <p class="text-content-muted">
+    Your funnel, your postings and how quickly you reply.
+    {% if overview.counted_to %}
+      Counted up to {{ overview.counted_to|date:"j M Y" }}{% if overview.computed_at %},
+      worked out {{ overview.computed_at|timesince }} ago{% endif %}. Anything since
+      then is not in these figures yet.
+    {% else %}
+      Nothing has been counted for this period yet. The figures are worked out
+      once a day.
+    {% endif %}
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <form method="get" class="mb-6 flex items-end gap-3">
+    <div>
+      <label class="label" for="days">Period</label>
+      <select class="input" id="days" name="days" onchange="this.form.submit()">
+        {% for option in windows %}
+          <option value="{{ option }}" {% if days == option %}selected{% endif %}>
+            Last {{ option }} days
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <noscript><button class="btn btn-secondary" type="submit">Apply</button></noscript>
+  </form>
+
+  {% if not overview.has_data %}
+    {% include "components/empty_state.html" with icon="chart" title="Nothing to report yet" text="Numbers appear here the morning after your first applications arrive." %}
+  {% else %}
+    {% if overview.response_nudge %}
+      <div class="panel bg-surface-sunken mb-8 p-4">
+        <p class="text-meta">{{ overview.response_nudge }}</p>
+      </div>
+    {% endif %}
+
+    <section class="mb-8">
+      <h2 class="text-lg font-semibold">Last {{ days }} days</h2>
+      {% comment %}
+        One `div.card.card-body` per group, directly under the `dl`: `dt`/`dd`
+        two divs deep is an invalid description list (axe serious
+        `definition-list`/`dlitem`), the same fault Billing fixed as B7.
+      {% endcomment %}
+      <dl class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="card card-body">
+          <dt class="overline">Applications</dt>
+          <dd class="mt-1 text-display tabular-nums">{{ overview.applications }}</dd>
+        </div>
+        <div class="card card-body">
+          <dt class="overline">Replied to</dt>
+          <dd class="mt-1 text-display tabular-nums">{{ overview.responded }}</dd>
+          <dd class="text-caption text-content-subtle">
+            {% widthratio overview.response_rate 1 100 %}% of applications
+          </dd>
+        </div>
+        <div class="card card-body">
+          <dt class="overline">Average reply time</dt>
+          <dd class="mt-1 text-display tabular-nums">{{ overview.average_response_hours }}</dd>
+          <dd class="text-caption text-content-subtle">hours</dd>
+        </div>
+        <div class="card card-body">
+          <dt class="overline">Hires</dt>
+          <dd class="mt-1 text-display tabular-nums">{{ overview.hires }}</dd>
+          <dd class="text-caption text-content-subtle">
+            {{ overview.interviews }} interview{{ overview.interviews|pluralize }},
+            {{ overview.offers }} offer{{ overview.offers|pluralize }}
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    {% if funnel %}
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold">Where everybody is</h2>
+        <p class="mt-1 text-caption text-content-subtle">
+          Drop-off is measured against the stage before it, not against the total, because
+          "we lose two thirds between reviewing and interview" is the sentence you
+          can act on.
+        </p>
+        <ul class="mt-3 space-y-3">
+          {% for stage in funnel %}
+            <li>
+              <div class="flex items-baseline justify-between gap-3">
+                <span class="text-meta">{{ stage.stage }}</span>
+                <span class="text-caption text-content-subtle tabular-nums">
+                  {{ stage.count }}
+                  {% if stage.average_hours %} · {{ stage.average_hours }}h average{% endif %}
+                </span>
+              </div>
+              {% if stage.drop_off %}
+                <p class="text-caption text-content-muted">
+                  {% widthratio stage.drop_off 1 100 %}% do not reach this stage
+                </p>
+              {% elif stage.skipped_in %}
+                {% comment %}
+                  More people here than at the stage above, because somebody
+                  was moved straight past it. Named rather than expressed as a
+                  drop-off, which came out as "-100% do not reach this stage".
+                {% endcomment %}
+                <p class="text-caption text-content-muted">
+                  {{ stage.skipped_in }} moved here without passing through the stage above
+                </p>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if time_to_hire.has_data %}
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold">Time to hire</h2>
+        <p class="mt-2 text-meta">
+          {{ time_to_hire.days }} days on average, {{ time_to_hire.median }} in the middle,
+          over {{ time_to_hire.sample }} hire{{ time_to_hire.sample|pluralize }}.
+        </p>
+      </section>
+    {% endif %}
+
+    {% if sources %}
+      <section class="mb-8" aria-labelledby="analytics-sources">
+        <h2 class="text-lg font-semibold" id="analytics-sources">Where applicants came from</h2>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-meta">
+            <thead>
+              <tr class="border-b border-hairline text-left text-caption text-content-subtle">
+                <th class="py-2 pr-4" scope="col">Source</th>
+                <th class="py-2 pr-4 text-right" scope="col">Applications</th>
+                <th class="py-2 pr-4 text-right" scope="col">Reached interview</th>
+                <th class="py-2 text-right" scope="col">Hired</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in sources %}
+                <tr class="border-b border-hairline">
+                  <th class="py-2 pr-4 text-left font-normal" scope="row">{{ row.source }}</th>
+                  <td class="py-2 pr-4 text-right tabular-nums">{{ row.applications }}</td>
+                  <td class="py-2 pr-4 text-right tabular-nums">{{ row.interviewed }} ({% widthratio row.interview_rate 1 100 %}%)</td>
+                  <td class="py-2 text-right tabular-nums">{{ row.hired }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+
+    {% if quality %}
+      <section class="mb-8" aria-labelledby="analytics-quality">
+        <h2 class="text-lg font-semibold" id="analytics-quality">How well applicants matched</h2>
+        <p class="mt-1 text-caption text-content-subtle">
+          The match score when they applied, never recalculated.
+        </p>
+        <dl class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {% for row in quality %}
+            <div class="card card-body">
+              <dt class="overline">{{ row.band }}</dt>
+              <dd class="mt-1 text-display tabular-nums">{{ row.count }}</dd>
+            </div>
+          {% endfor %}
+        </dl>
+      </section>
+    {% endif %}
+
+    {% if workload %}
+      <section class="mb-8" aria-labelledby="analytics-workload">
+        <h2 class="text-lg font-semibold" id="analytics-workload">Who did the work</h2>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-meta">
+            <thead>
+              <tr class="border-b border-hairline text-left text-caption text-content-subtle">
+                <th class="py-2 pr-4" scope="col">Team member</th>
+                <th class="py-2 pr-4 text-right" scope="col">Applicants moved</th>
+                <th class="py-2 text-right" scope="col">Notes written</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in workload %}
+                <tr class="border-b border-hairline">
+                  <th class="py-2 pr-4 text-left font-normal" scope="row">{{ row.name }}</th>
+                  <td class="py-2 pr-4 text-right tabular-nums">{{ row.moves }}</td>
+                  <td class="py-2 text-right tabular-nums">{{ row.notes }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+
+    {% if postings %}
+      <section>
+        <h2 class="text-lg font-semibold">Postings</h2>
+        <p class="mt-1 text-caption text-content-subtle">
+          A posting nobody sees and a posting everybody sees and ignores are
+          different problems.
+        </p>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-meta">
+            <thead>
+              <tr class="border-b border-hairline text-left text-caption text-content-subtle">
+                <th class="py-2 pr-4">Posting</th>
+                <th class="py-2 pr-4 text-right">Views</th>
+                <th class="py-2 pr-4 text-right">Applications</th>
+                <th class="py-2 pr-4 text-right">Apply rate</th>
+                <th class="py-2 text-right">Shortlisted</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for posting in postings %}
+                <tr class="border-b border-hairline">
+                  <td class="py-2 pr-4">{{ posting.title }}</td>
+                  <td class="py-2 pr-4 text-right tabular-nums">{{ posting.views }}</td>
+                  <td class="py-2 pr-4 text-right tabular-nums">{{ posting.applications }}</td>
+                  <td class="py-2 pr-4 text-right tabular-nums">
+                    {% widthratio posting.apply_rate 1 100 %}%
+                  </td>
+                  <td class="py-2 text-right tabular-nums">{{ posting.shortlisted }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+  {% endif %}
+{% endblock %}

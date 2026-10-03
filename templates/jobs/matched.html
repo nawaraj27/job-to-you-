@@ -1,0 +1,51 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Roles scored against the candidate's profile (FR-8.3).
+
+Nothing on this page is stored. The scores are computed when the page is asked
+for and cached in Redis under a key that already contains every reason they
+could go stale (ADR-A21) — so a job published a minute ago is in this list a
+minute ago, and there is no score table anybody has to operate.
+
+Every row carries its score *and* its working. A percentage on its own is a
+horoscope; the components underneath are what make it something a candidate can
+argue with, which is the whole of ADR-A6.
+{% endcomment %}
+
+{% block title %}Matched to your profile — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Matched to your profile" text="Roles scored against your skills, experience and what you said you are looking for. Nobody is told what you matched." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl stack">
+    <div class="flex items-baseline justify-between gap-4">
+      <p class="text-meta text-content-muted">
+        {% if total %}{{ total }} role{{ total|pluralize }} scored{% else %}Nothing yet{% endif %}
+      </p>
+      <a href="{% url 'jobs:list' %}" class="link-editorial">Browse everything instead</a>
+    </div>
+
+    {% comment %}Company filter (docs/Job-Search.md): links, so it works without script and keeps the page in the URL.{% endcomment %}
+    <nav aria-label="Filter by company verification" class="flex flex-wrap gap-2">
+      {% for value, label in verification_choices %}
+        <a href="{% query_replace verification=value page=1 %}"
+           class="prompt-chip {% if value == verification %}border-brand-600 text-content{% endif %}"
+           {% if value == verification %}aria-current="true"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+
+    {% comment %}
+      The rows use h3 titles. With nothing between them and the page's h1, a
+      screen reader's heading list jumped a level (axe: heading-order).
+    {% endcomment %}
+    <h2 class="sr-only">Matched roles</h2>
+    {% include "jobs/_matched_results.html" %}
+
+    <p class="text-caption text-content-subtle">
+      Scores are worked out from your profile each time you open this page. They
+      are never shown to employers, and applying is what tells a company anything.
+    </p>
+  </div>
+{% endblock %}

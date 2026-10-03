@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% comment %}
+Shell for the three builders.
+
+An editor is a workspace, so the site chrome goes: no marketing nav, no footer,
+no page that scrolls away from the document. What replaces it is a single bar
+carrying the four things a person editing a CV needs constantly — where they
+are, whether it saved, what it looks like, and how to get it out.
+
+Blocks: builder_title, builder_actions, builder_body
+{% endcomment %}
+
+{% block body_class %}bg-surface-sunken{% endblock %}
+
+{% block header %}
+<header class="sticky top-0 z-50 border-b border-hairline bg-canvas">
+  <div class="flex h-14 items-center gap-3 px-4 sm:px-6">
+
+    <a href="{% url 'resume:builder' %}"
+       class="btn btn-ghost btn-sm shrink-0" aria-label="Back to CV builder">
+      {% icon "arrow-left" css_class="size-4" %}<span class="hidden sm:inline">Builder</span>
+    </a>
+
+    <span class="h-5 w-px shrink-0 bg-hairline" aria-hidden="true"></span>
+
+    {% comment %}
+      The document's name is the page heading in an editor — so it is the h1,
+      even though it is set at 14px. Heading level is structure, not size, and
+      the alternative was three builder screens whose only h1 was a decorative
+      one further down the page (or, in the case of the editor, none at all).
+    {% endcomment %}
+    <div class="min-w-0 flex-1">
+      <h1 class="truncate text-sm font-medium">{% block builder_title %}{{ page_title }}{% endblock %}</h1>
+      <p class="truncate text-overline text-content-subtle">
+        {% block builder_subtitle %}All changes saved{% endblock %}
+      </p>
+    </div>
+
+    <div class="flex shrink-0 items-center gap-1.5">
+      {% block builder_actions %}{% endblock %}
+    </div>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}{% block builder_body %}{% endblock %}{% endblock %}
+
+{% block footer %}{% endblock %}

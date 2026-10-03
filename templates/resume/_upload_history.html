@@ -1,0 +1,142 @@
+{% comment %}
+What happened to each file.
+
+"Parsed" on its own is a status, not an answer. The row now says what came out
+of the file — two roles and ten skills, or nothing at all — because that is the
+question somebody has after uploading, and because the two outcomes need
+different next actions.
+
+A file with no text is the case this screen used to get wrong: it showed
+"Parsed" beside an "Edit as a CV" button that produced an empty document, and
+the candidate was left to work out why. A scan or a phone photograph of a CV is
+a common thing to upload, and it is worth telling somebody plainly, because no
+employer's software will get anything out of that file either.
+{% endcomment %}
+{% comment %}
+While a file is still being scanned or read the list refreshes itself, and
+says plainly that the work is not waiting on this page. This screen is in the
+rail, so it is where somebody comes back to after leaving; before it refreshed
+they returned to a row that said "Waiting to be parsed" and stayed that way
+until they thought to reload.
+{% endcomment %}
+{% comment %}
+`oob` is set when this list rides along with another response (UPL-01): the
+upload form's answer used to include a second copy of this section inside
+the alert region, so the page had two `#upload-history` lists — the new one
+never polled, and the old one kept saying "Nothing uploaded yet." Out of band,
+the one list on the page is replaced instead. The poll also brings back
+"Found in your CV" (`hx-select-oob`), which otherwise appeared only on reload.
+{% endcomment %}
+<section id="upload-history" class="stack mt-10"
+         {% if oob %}hx-swap-oob="outerHTML"{% endif %}
+         {% if waiting %}hx-get="{% url 'resume:upload' %}" hx-trigger="every 2s"
+         hx-select="#upload-history" hx-target="#upload-history" hx-swap="outerHTML"
+         hx-select-oob="#import-proposals"{% endif %}>
+  <div class="stack-head"><h2 class="stack-title">Your uploads</h2></div>
+
+  {% if waiting %}
+    <p class="mt-2 flex items-center gap-2 text-meta text-content-muted">
+      {% icon "clock" css_class="size-4 shrink-0" %}
+      <span class="measure">
+        Still working on one of these. It carries on whether this page is open or not, so
+        leave and come back to Uploads whenever you like.
+      </span>
+    </p>
+  {% endif %}
+
+  <ul class="mt-4 space-y-4">
+    {% for upload in uploads %}
+      {% with parse=upload.parse %}
+        <li class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="font-medium">{{ upload.original_filename }}</p>
+
+            {% if upload.parse_status == "parsed" and parse and parse.is_empty %}
+              <p class="mt-1 flex gap-2 text-meta text-danger-fg">
+                {% icon "warning" css_class="mt-0.5 size-4 shrink-0" %}
+                <span class="measure">
+                  There is no text in this file. It is a picture of a CV rather
+                  than a document, so nothing could be read out of it. No
+                  applicant tracking system can read it either.
+                </span>
+              </p>
+              <p class="mt-1.5 text-caption text-content-subtle measure">
+                Export the original from Word as a PDF instead of scanning it, or
+                build a fresh one here and export that.
+              </p>
+
+            {% elif upload.parse_status == "parsed" %}
+              <p class="mt-1 text-meta text-content-muted">
+                {% with found=upload.parse.structured %}
+                  Read
+                  {% if found.experience %}{{ found.experience|length }} role{{ found.experience|length|pluralize }}{% else %}no roles{% endif %},
+                  {{ found.skills|length }} skill{{ found.skills|length|pluralize }}{% if found.education %},
+                  {{ found.education|length }} qualification{{ found.education|length|pluralize }}{% endif %}
+                {% endwith %}
+                {% if upload.pages %} · {{ upload.pages }} page{{ upload.pages|pluralize }}{% endif %}
+              </p>
+
+            {% else %}
+              <p class="mt-1 text-meta text-content-muted">
+                {{ upload.get_parse_status_display }}
+                {% if upload.pages %} · {{ upload.pages }} page{{ upload.pages|pluralize }}{% endif %}
+                {% if upload.parse_error %} · {{ upload.parse_error }}{% endif %}
+              </p>
+            {% endif %}
+          </div>
+
+          <div class="flex shrink-0 gap-2">
+            {% if upload.parse_status == "parsed" and parse and parse.is_empty %}
+              <a href="{% url 'resume:builder' %}" class="btn btn-secondary btn-sm">Build one instead</a>
+            {% elif upload.parse_status == "parsed" %}
+              {% comment %}
+              Once a CV has been built from this file, "Edit as a CV" reopens
+              that same document — the service is idempotent — and the report
+              is one click away beside it. Before this the row offered only
+              the build button, so a candidate returning to a CV they had
+              already analysed had no route from the file to its analysis and
+              went looking for it in the rail.
+              {% endcomment %}
+              {% with built=upload.documents.all|first %}
+                <form method="post" action="{% url 'resume:import_act' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="command" value="build">
+                  <input type="hidden" name="upload" value="{{ upload.public_id }}">
+                  <button type="submit" class="btn btn-secondary btn-sm">
+                    {% if built %}Open the CV{% else %}Edit as a CV{% endif %}
+                  </button>
+                </form>
+                {% if built %}
+                  <a href="{% url 'resume:analysis' %}?document={{ built.public_id }}"
+                     class="btn btn-quiet btn-sm">Analysis</a>
+                {% endif %}
+              {% endwith %}
+            {% endif %}
+            {% comment %}
+              Confirmed, because this one does not come back. Removing an
+              upload deletes the file the candidate gave us and the reading of
+              it; there is no undo on this screen the way there is in the
+              editor, and it used to happen on one click with nothing asked.
+
+              The sentence answers the question somebody actually has before
+              they press it, which is not "are you sure" but "what else goes
+              with it". The answer is nothing — a CV built from this file keeps
+              its own history, and so does every application that used one —
+              and it is worth saying, because the reasonable fear is that it
+              does not.
+            {% endcomment %}
+            <button type="button" class="link-editorial text-content-subtle"
+                    data-confirm-title="Remove {{ upload.original_filename }}?"
+                    data-confirm-label="Remove the file"
+                    data-confirm-tone="danger"
+                    hx-confirm="The file and what we read out of it are deleted, and that cannot be undone.{% if upload.documents.all %} The CV you built from it stays, with every saved version and every application that used one.{% endif %} Anything you already added to your profile from it stays too."
+                    hx-post="{% url 'resume:upload_delete' upload_id=upload.public_id %}"
+                    hx-target="#upload-history" hx-swap="outerHTML">Remove</button>
+          </div>
+        </li>
+      {% endwith %}
+    {% empty %}
+      <li class="text-content-muted">Nothing uploaded yet.</li>
+    {% endfor %}
+  </ul>
+</section>

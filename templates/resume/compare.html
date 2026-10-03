@@ -1,0 +1,52 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Templates side by side.
+
+Documents, not description cards: the question a comparison answers is "which
+of these reads better with my history in it", and no amount of prose about a
+sidebar answers that.
+
+The column count is fixed at three on wide screens rather than interpolated
+from the number chosen. Tailwind generates classes at build time, so a class
+name assembled in the template — `grid-cols-{{ templates|length }}` — is a
+class that does not exist in the stylesheet, and the grid silently collapsed
+to one column. Three is the comparison limit anyway.
+{% endcomment %}
+
+{% block title %}Compare templates — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Compare templates" text="Up to three at a time. Layout only: the words are always yours." %}
+{% endblock %}
+
+{% block app_body %}
+  {% if results %}
+    <p class="mb-6 text-meta text-content-muted">
+      The same example CV in each layout. Open one to preview it with your own CV.
+    </p>
+
+    <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+      {% for row in results %}
+        <section>
+          <div class="overflow-hidden rounded-md">
+            {% include "resume/_paper.html" with paper=row.paper paper_classes=row.paper_classes|add:" sheet-thumb" paper_style=row.paper_style %}
+          </div>
+          <h2 class="mt-4 text-lg">{{ row.template.name }}</h2>
+          <p class="mt-0.5 text-meta text-content-subtle">
+            {{ row.template.get_layout_display }} · {{ row.template.font }}
+            {% if row.template.tier == "pro" %} · Pro{% endif %}
+          </p>
+          <p class="mt-3 text-content-muted">{{ row.template.suits }}</p>
+          <a href="{% url 'resume:template_detail' slug=row.template.slug %}" class="link-editorial mt-4">
+            Open {{ row.template.name }}
+          </a>
+        </section>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-content-muted">
+      Nothing chosen yet. Pick up to {{ limit }} from
+      <a href="{% url 'resume:templates' %}" class="link-editorial">the gallery</a>.
+    </p>
+  {% endif %}
+{% endblock %}

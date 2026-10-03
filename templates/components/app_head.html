@@ -1,0 +1,30 @@
+{% comment %}
+Page head for a signed-in working screen.
+
+  {% include "components/app_head.html" with title="Recommended jobs" text="..." %}
+
+Deliberately not the marketing page band: no eyebrow, no tinted ground, no
+generous hero padding. A working screen should start working in the first
+scroll, so this is a title, one line of orientation, and the page's actions.
+Wrap actions with {% block %} at the call site instead when they are complex.
+{% endcomment %}
+<div class="app-head">
+  <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+    <div class="min-w-0">
+      {% if back_url %}
+        <a href="{{ back_url }}" class="mb-2.5 inline-flex items-center gap-1.5 text-meta font-medium text-content-muted transition-colors hover:text-content">
+          {% icon "arrow-left" css_class="size-4" %}{{ back_label|default:"Back" }}
+        </a>
+      {% endif %}
+      <h1 class="app-title">{{ title }}</h1>
+      {% if text %}
+        <p class="mt-2 max-w-[62ch] text-body-lg leading-relaxed text-content-muted">{{ text }}</p>
+      {% endif %}
+    </div>
+    {% if action_url %}
+      <a href="{{ action_url }}" class="btn btn-primary">
+        {% if action_icon %}{% icon action_icon css_class="size-4" %}{% endif %}{{ action_label }}
+      </a>
+    {% endif %}
+  </div>
+</div>

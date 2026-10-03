@@ -1,0 +1,32 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+The employer shell.
+
+`apps/core/navigation.py` has carried a full employer rail — applicants,
+messages, talent pools, candidate search, interviews, analytics, pipeline,
+billing — since it was written, and `layouts/app.html` renders it. Every
+employer screen extended `layouts/page.html` instead, which has no navigation
+at all. So a recruiter could reach jobs, profile, verification and team, and
+nothing else: eight working sections of the product were reachable only by
+typing the URL, and the overview told them applicants and analytics "arrive in
+a later release".
+
+This layout is the join. It keeps `page_heading` / `page_intro` / `page_body`
+so the twenty screens written against the old layout did not have to be
+rewritten to gain a rail — a rename across twenty files is twenty chances to
+break one, for no benefit a reader would notice.
+{% endcomment %}
+
+{% block app_head %}
+  <div class="app-head">
+    {% if page_eyebrow %}<p class="overline">{{ page_eyebrow }}</p>{% endif %}
+    <h1 class="app-title {% if page_eyebrow %}mt-1{% endif %}">
+      {% block page_heading %}{{ page_title }}{% endblock %}
+    </h1>
+    {% block page_intro %}{% endblock %}
+  </div>
+{% endblock %}
+
+{% block app_body %}
+  {% block page_body %}{% endblock %}
+{% endblock %}

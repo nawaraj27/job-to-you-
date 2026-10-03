@@ -1,0 +1,63 @@
+{% comment %}
+What the analysis found, carried into the screen where it gets fixed
+(`resumes.improvement`).
+
+Two modes, one list:
+
+  * guided — "What we found": every point with what was detected, why it
+    matters, where it is on the CV, and what to add. Questions are answered in
+    place; the answer is drafted into the entry it is about, from what the
+    candidate wrote and nothing else.
+  * assisted — "What we are going to change": the same points split into
+    safe rewordings (drafted on request, reviewed before anything changes)
+    and points that need the candidate's input (asked, never guessed), then
+    the drafted changes with Apply / Reject.
+
+Redraws itself from the database whenever the CV changes (`cv:changed`) or
+background work finishes (`improve:done`), so a point that has been fixed is
+shown as done without a reload.
+
+  plan, mode, document, job, form_token
+{% endcomment %}
+{% url 'resume:builder_act' document_id=document.public_id as act %}
+{% url 'resume:improvement_panel' document_id=document.public_id as panel_url %}
+<section id="improvement-plan" aria-labelledby="plan-title"
+         hx-get="{{ panel_url }}?mode={{ mode }}" hx-trigger="cv:changed from:body, improve:done from:body"
+         hx-swap="outerHTML">
+  <div class="panel p-5 md:p-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="min-w-0">
+        <p class="overline">{% if mode == "assisted" %}Assisted CV{% else %}Improve your CV{% endif %}</p>
+        <h2 id="plan-title" class="mt-1 font-serif text-xl md:text-2xl">
+          {% if mode == "assisted" %}What we are going to change{% else %}What we found{% endif %}
+        </h2>
+        <p class="mt-1.5 max-w-[62ch] text-meta text-content-muted">
+          {% if plan.source == "analysis" %}
+            From your analysis of version {{ plan.analysis.version.version_no }} on {{ plan.analysis.created_at|date:"j M Y" }}{% if plan.analysis.target_role %}, aimed at {{ plan.analysis.target_role }}{% endif %}.
+            Each point is re-checked against your CV as it is now.
+          {% else %}
+            A quick check of your CV as it is now, without an analysis.
+            <a href="{% url 'resume:analysis' %}" class="link-editorial">Run a full analysis</a> for the scored report.
+          {% endif %}
+        </p>
+      </div>
+      {% if plan.items %}
+        <p class="shrink-0 text-meta text-content-muted" aria-label="{{ plan.addressed_count }} of {{ plan.items|length }} points done">
+          <span class="font-medium text-content tabular-nums">{{ plan.addressed_count }}</span> of
+          <span class="tabular-nums">{{ plan.items|length }}</span> done
+        </p>
+      {% endif %}
+    </div>
+
+    {% if plan.is_empty %}
+      <p class="mt-5 flex items-start gap-2 text-content-muted">
+        {% icon "check-circle" css_class="mt-0.5 size-5 shrink-0 text-success-fg" %}
+        Nothing measurable stands out on this CV. {% if plan.strengths %}Working well: {{ plan.strengths|join:"; " }}.{% endif %}
+      </p>
+    {% elif mode == "assisted" %}
+      {% include "resume/_improvement_assisted.html" %}
+    {% else %}
+      {% include "resume/_improvement_guided.html" %}
+    {% endif %}
+  </div>
+</section>

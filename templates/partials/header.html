@@ -1,0 +1,137 @@
+{% comment %}
+Application shell header.
+
+Renders entirely from `primary_nav` (apps/core/navigation.py). Items with
+children become a description-led menu; leaf items render as plain links. No
+link is hardcoded here, so shipping a new module never touches this file.
+{% endcomment %}
+
+<header x-data="siteHeader"
+        @keydown.escape.window="closeEverything()"
+        @click.outside="closeMenus()"
+        {% comment %}
+          Opaque, not frosted. A blurred bar over a photograph is the single
+          most recognisable "generated landing page" tell, and it makes the
+          hero image mush at exactly the point the reader looks first.
+        {% endcomment %}
+        class="sticky top-0 z-50 bg-canvas transition-shadow"
+        :class="scrolled ? 'border-b border-hairline' : 'border-b border-transparent'">
+
+  <div class="container-page">
+    <div class="flex h-16 items-center justify-between gap-4">
+
+      {% comment %}
+        Brand. One line, serif wordmark. The stacked name-over-tagline lockup
+        reads as a startup pitch deck; a masthead reads as an institution.
+        The lockup itself lives in components/brand_mark.html so a real logo
+        file replaces it everywhere at once.
+      {% endcomment %}
+      <a href="{% url 'core:home' %}" class="rounded-md" aria-label="{{ site.name }} home">
+        {% include "components/brand_mark.html" %}
+      </a>
+
+      {# --- Primary navigation (desktop) --- #}
+      <nav class="hidden lg:flex lg:items-center lg:gap-0.5" aria-label="Primary">
+        {% for item in primary_nav %}
+          {% if item.children %}
+            <div class="relative">
+              <button type="button"
+                      class="nav-link"
+                      @click="toggleMenu('{{ forloop.counter }}')"
+                      :aria-expanded="isOpen('{{ forloop.counter }}') ? 'true' : 'false'"
+                      aria-controls="nav-menu-{{ forloop.counter }}"
+                      aria-haspopup="true">
+                {{ item.label }}
+                {% icon "chevron-down" css_class="size-4 transition-transform" %}
+              </button>
+
+              <div id="nav-menu-{{ forloop.counter }}"
+                   x-show="isOpen('{{ forloop.counter }}')"
+                   x-cloak
+                   x-transition.opacity.duration.150ms
+                   class="menu-panel absolute left-0 top-full mt-1.5 w-80"
+                   role="menu">
+                {% for child in item.children %}
+                  <a href="{{ child.url }}" class="menu-item" role="menuitem" @click="closeMenus()">
+                    {% if child.icon %}
+                      <span class="mt-0.5 text-content-subtle">{% icon child.icon css_class="size-4.5" %}</span>
+                    {% endif %}
+                    <span>
+                      <span class="block font-medium">{{ child.label }}</span>
+                      {% if child.description %}
+                        <span class="mt-0.5 block text-meta text-content-subtle">{{ child.description }}</span>
+                      {% endif %}
+                    </span>
+                  </a>
+                {% endfor %}
+              </div>
+            </div>
+          {% else %}
+            <a href="{{ item.url }}" class="nav-link"
+               {% if request.path == item.url %}aria-current="page"{% endif %}>{{ item.label }}</a>
+          {% endif %}
+        {% endfor %}
+      </nav>
+
+      {% comment %}
+        Account actions.
+
+        The theme switch is hidden below `sm` and repeated in the drawer: at
+        320px the wordmark, the switch, "Get started" and the menu button
+        together overflowed the viewport by 17px, and of the four the theme
+        switch is the one nobody opens the site to use.
+      {% endcomment %}
+      <div class="flex items-center gap-1.5">
+        {% comment %}
+          The bell links to the list rather than opening a panel. A 320px
+          dropdown that closes when you look away is where notifications go to
+          be missed, and the count is the only part of it worth having in the
+          masthead. The number is repeated in text for screen readers because
+          a badge with "3" in it does not say three what.
+        {% endcomment %}
+        {% if cv_progress %}{% include "resume/_progress_chip.html" %}{% endif %}
+        {% comment %}
+          Signed in only. A visitor has no notifications, the link could only
+          send them to sign in, and at 320px it was the 40px that pushed the
+          masthead 5px past the edge of the screen.
+        {% endcomment %}
+        {% if user.is_authenticated %}
+        <a href="{% url 'notifications:index' %}"
+           class="btn btn-ghost btn-icon relative"
+           {% if request.resolver_match.app_name == 'notifications' %}aria-current="page"{% endif %}>
+          {% icon "bell" css_class="size-5" %}
+          {% if unread_notifications %}
+            <span class="bell-count tabular-nums" aria-hidden="true">
+              {% if unread_notifications > 9 %}9+{% else %}{{ unread_notifications }}{% endif %}
+            </span>
+          {% endif %}
+          <span class="sr-only">
+            Notifications{% if unread_notifications %}, {{ unread_notifications }} unread{% endif %}
+          </span>
+        </a>
+        {% endif %}
+
+        <span class="hidden sm:contents">{% include "partials/theme_toggle.html" %}</span>
+
+        {% if user.is_authenticated %}
+          {% include "partials/user_menu.html" %}
+        {% else %}
+          <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-sm hidden sm:inline-flex">Log in</a>
+          <a href="{% url 'accounts:signup' %}" class="btn btn-primary btn-sm">Get started</a>
+        {% endif %}
+
+        <button type="button"
+                class="btn btn-ghost btn-icon lg:hidden"
+                @click="toggleMobile()"
+                :aria-expanded="mobileOpen ? 'true' : 'false'"
+                aria-controls="mobile-nav"
+                aria-label="Toggle navigation">
+          <template x-if="!mobileOpen">{% icon "menu" css_class="size-5" %}</template>
+          <template x-if="mobileOpen">{% icon "close" css_class="size-5" %}</template>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {% include "partials/mobile_nav.html" %}
+</header>

@@ -1,0 +1,155 @@
+{% comment %}
+The notification list, on real rows (P10).
+
+Each row is a link that marks itself read on the way out, so nothing has to be
+dismissed twice. Dismissing is undoable: it is one click among a column of
+near-identical rows, and what it removes exists nowhere else.
+
+Muted categories are stated rather than silently absent — a feed that is short
+because you muted something should say so, or the next thing you wonder is
+whether the platform is broken.
+{% endcomment %}
+{% url 'notifications:act' as act %}
+<div id="notifications-feed">
+
+  {% if flash_error %}
+    <div class="alert alert-error mb-6" role="alert">
+      <span class="mt-px shrink-0 text-danger-fg">{% icon "error" css_class="size-5" %}</span>
+      <div>
+        <p class="alert-title">Nothing changed</p>
+        <p class="mt-0.5 text-content-muted">{{ flash_error }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+  {# --- Undo --- #}
+  {% if undo %}
+    <div class="alert alert-info mb-6" role="status">
+      <span class="mt-px shrink-0 text-info-fg">{% icon "info" css_class="size-5" %}</span>
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <p>Dismissed “{{ undo.title }}”.</p>
+        <button type="button" class="btn btn-ghost btn-sm"
+                hx-post="{{ act }}"
+                hx-vals='{"command": "undo", "id": "{{ undo.public_id }}"}'
+                hx-target="#notifications-feed" hx-swap="outerHTML">
+          {% icon "refresh" css_class="size-4" %}Undo
+        </button>
+      </div>
+    </div>
+  {% endif %}
+
+  {# --- Filters --- #}
+  <div class="toolbar">
+    <div class="segmented" role="group" aria-label="Filter notifications">
+      <a href="?" {% if not kind and not unread_only %}aria-current="page"{% endif %}>
+        All <span class="tabular-nums text-content-subtle">{{ total }}</span>
+      </a>
+      <a href="?unread=1" {% if unread_only %}aria-current="page"{% endif %}>
+        Unread <span class="tabular-nums text-content-subtle">{{ unread }}</span>
+      </a>
+      {% for item in kinds %}
+        <a href="?kind={{ item }}"
+           {% if kind == item %}aria-current="page"{% endif %}>{{ item|event_label }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="ml-auto flex gap-1.5">
+      <button type="button" class="btn btn-ghost btn-sm"
+              hx-post="{{ act }}"
+              hx-vals='{"command": "read_all", "kind": "{{ kind }}", "unread": "{% if unread_only %}1{% endif %}"}'
+              hx-target="#notifications-feed" hx-swap="outerHTML"
+              {% if not unread %}disabled aria-disabled="true"{% endif %}>
+        Mark all read
+      </button>
+    </div>
+  </div>
+
+  {# --- The list --- #}
+  {% if items %}
+    <ul class="mt-6">
+      {% for note in items %}
+        <li class="note-row" data-unread="{% if note.is_read %}false{% else %}true{% endif %}">
+          <span class="mt-0.5 shrink-0 text-content-subtle">
+            {% icon "bell" css_class="size-5" %}
+          </span>
+
+          <div class="min-w-0 flex-1">
+            <a href="{% url 'notifications:open' note.public_id %}"
+               class="block rounded-sm focus-visible:outline-2">
+              <span class="note-title block">
+                {{ note.title }}
+                {% comment %}
+                  A collapsed burst says how many it stands for, rather than
+                  appearing as one arrival and quietly hiding the rest.
+                {% endcomment %}
+                {% if note.count > 1 %}
+                  <span class="badge badge-neutral ml-1.5 tabular-nums">{{ note.count }}</span>
+                {% endif %}
+              </span>
+              <span class="mt-0.5 block text-meta text-content-muted">{{ note.body }}</span>
+            </a>
+            <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-content-subtle">
+              <span>{{ note.created_at|timesince }} ago</span>
+              <span aria-hidden="true">·</span>
+              {% comment %}
+                The event type is how the system routes this, not how a person
+                reads it. The title above already says what happened; showing
+                `application.stage_changed` beside the time was showing the
+                reader a routing key.
+              {% endcomment %}
+              <span>{{ note.kind|event_label }}</span>
+            </p>
+          </div>
+
+          <div class="note-actions flex shrink-0 gap-0.5">
+            {% if not note.is_read %}
+              <button type="button" class="btn btn-ghost btn-icon"
+                      hx-post="{{ act }}"
+                      hx-vals='{"command": "read", "id": "{{ note.public_id }}", "kind": "{{ kind }}", "unread": "{% if unread_only %}1{% endif %}", "page": "{{ page.number }}"}'
+                      hx-target="#notifications-feed" hx-swap="outerHTML"
+                      aria-label="Mark “{{ note.title }}” as read">
+                {% icon "check-circle" css_class="size-4" %}
+              </button>
+            {% endif %}
+            <button type="button" class="btn btn-ghost btn-icon"
+                    hx-post="{{ act }}"
+                    hx-vals='{"command": "dismiss", "id": "{{ note.public_id }}", "kind": "{{ kind }}", "unread": "{% if unread_only %}1{% endif %}", "page": "{{ page.number }}"}'
+                    hx-target="#notifications-feed" hx-swap="outerHTML"
+                    aria-label="Dismiss “{{ note.title }}”">
+              {% icon "close" css_class="size-4" %}
+            </button>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+
+    {% if page.total_pages > 1 %}
+      <div class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-hairline pt-5">
+        <p class="text-meta text-content-muted">
+          Page {{ page.number }} of {{ page.total_pages }} ·
+          showing {{ page.start }}–{{ page.end }} of {{ page.count }}
+        </p>
+        <div class="flex gap-1.5">
+          {% if page.previous %}
+            <button type="button" class="btn btn-ghost btn-sm"
+                    hx-post="{{ act }}"
+                    hx-vals='{"command": "page", "kind": "{{ kind }}", "unread": "{% if unread_only %}1{% endif %}", "page": "{{ page.previous }}"}'
+                    hx-target="#notifications-feed" hx-swap="outerHTML">
+              {% icon "chevron-left" css_class="size-4" %}Newer
+            </button>
+          {% endif %}
+          {% if page.next %}
+            <button type="button" class="btn btn-secondary btn-sm"
+                    hx-post="{{ act }}"
+                    hx-vals='{"command": "page", "kind": "{{ kind }}", "unread": "{% if unread_only %}1{% endif %}", "page": "{{ page.next }}"}'
+                    hx-target="#notifications-feed" hx-swap="outerHTML">
+              Older{% icon "chevron-right" css_class="size-4" %}
+            </button>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    {% include "components/empty_state.html" with icon="bell" title="Nothing here" text="Updates about your applications, messages and saved searches arrive here. What you switch off in settings never appears — it is not collected quietly behind a badge." %}
+  {% endif %}
+</div>

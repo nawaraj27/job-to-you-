@@ -1,0 +1,40 @@
+{% comment %}
+The save control for one job, rendered by the server.
+
+Returned by jobs:act after a save, so the icon, the pressed state and the label
+all come from the same place that changed the record — a client-side flag would
+let the bookmark and the saved list disagree, and a page reload would silently
+undo the save.
+
+The direction is decided by the server from the row, not by the value this page
+rendered: a stale tab must not be able to unsave something twice.
+
+  {% include "jobs/_control.html" with job=job %}
+{% endcomment %}
+{% with saved=job.slug|in_list:saved_slugs %}
+<span id="save-{{ job.slug }}" class="contents">
+  {% if can_save %}
+    <button type="button" class="btn btn-ghost btn-icon"
+            hx-post="{% url 'jobs:act' %}"
+            hx-vals='{"command": "save", "slug": "{{ job.slug }}", "render": "control"}'
+            hx-target="#save-{{ job.slug }}" hx-swap="outerHTML"
+            aria-pressed="{{ saved|yesno:'true,false' }}"
+            aria-label="{% if saved %}Saved. Remove {{ job.title }} from saved jobs{% else %}Save {{ job.title }}{% endif %}">
+      {% if saved %}
+        {% icon "bookmark" css_class="size-4.5 text-accent" fill="currentColor" %}
+      {% else %}
+        {% icon "bookmark" css_class="size-4.5 text-content-subtle" %}
+      {% endif %}
+    </button>
+  {% else %}
+    {% comment %}
+      Signed out. A link to sign in rather than a button that fails: browsing
+      needs no account, and the moment one is needed is the moment to say so.
+    {% endcomment %}
+    <a href="{% url 'accounts:login' %}?next={{ job.url|urlencode }}" class="btn btn-ghost btn-icon"
+       aria-label="Sign in to save {{ job.title }}">
+      {% icon "bookmark" css_class="size-4.5 text-content-subtle" %}
+    </a>
+  {% endif %}
+</span>
+{% endwith %}

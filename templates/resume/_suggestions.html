@@ -1,0 +1,76 @@
+{% comment %}
+Suggestions and profile drift.
+
+Nothing here has been applied. An accept is the only way anything reaches the
+document, which is what makes "we never rewrite your CV" true rather than
+promised.
+{% endcomment %}
+{% url 'resume:builder_act' document_id=document.public_id as act %}
+{% if suggestions or drift.has_drift %}
+  <section>
+    <div class="stack-head">
+      <h2 class="stack-title">Suggestions</h2>
+      <button type="button" class="link-editorial"
+              hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+              hx-vals='{"command": "reconcile"}'>Check my profile</button>
+    </div>
+
+    {% if suggestions %}
+    <ul class="mt-4 space-y-3">
+      {% for suggestion in suggestions %}
+        <li class="card">
+          <div class="card-body">
+            {% comment %}
+              Where the words came from, on every suggestion (SRS §9.3.9). A
+              candidate accepting a sentence into their own CV is entitled to
+              know whether a person or a model wrote it.
+            {% endcomment %}
+            <p class="text-meta text-content-muted">
+              {{ suggestion.rationale }}
+              {% if suggestion.ai_run_id %}
+                <span class="text-caption text-content-subtle">· AI</span>
+              {% endif %}
+            </p>
+            <p class="mt-1">{{ suggestion.proposed }}</p>
+            {% if suggestion.original %}
+              <p class="mt-1 text-meta text-content-subtle">Currently: {{ suggestion.original }}</p>
+            {% endif %}
+            <div class="mt-3 flex gap-2">
+              <button type="button" class="btn btn-secondary btn-sm"
+                      hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                      hx-vals='{"command": "accept_suggestion", "id": "{{ suggestion.pk }}"}'>Use this</button>
+              <button type="button" class="btn btn-ghost btn-sm"
+                      hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                      hx-vals='{"command": "reject_suggestion", "id": "{{ suggestion.pk }}"}'>Keep mine</button>
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% comment %}
+      One sentence, not one row per skill.
+
+      Every skill in this list carries the same explanation, so a candidate
+      with eight of them was shown eight copies of "on your CV but not on your
+      profile, so job matching cannot see it" — which reads as eight problems
+      and is one.
+    {% endcomment %}
+    {% if drift.document_to_profile %}
+      <div class="mt-4 rounded-lg border border-hairline p-4">
+        <p class="text-body">
+          {{ drift.document_to_profile|length }}
+          skill{{ drift.document_to_profile|length|pluralize }} on this CV
+          {{ drift.document_to_profile|length|pluralize:"is,are" }} not on your profile:
+          <span class="text-content-muted">{% for item in drift.document_to_profile %}{{ item.label }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+        </p>
+        <p class="mt-2 text-meta text-content-muted">
+          Job matching reads your profile rather than the document, so these are
+          invisible to it until they are on there too.
+        </p>
+        <a href="{% url 'dashboard:profile' %}" class="link-editorial mt-3">Add them to my profile</a>
+      </div>
+    {% endif %}
+  </section>
+{% endif %}

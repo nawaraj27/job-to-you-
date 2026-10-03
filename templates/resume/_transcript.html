@@ -1,0 +1,61 @@
+{% comment %}
+The conversation, and the box you type the next turn into.
+
+A partial because it redraws itself: after a turn is sent (`improve:queued`)
+and when the background work behind it finishes (`improve:done`), it asks
+`resume:transcript` for the conversation as it is stored — so the candidate's
+answer is on screen at once, the reply appears when it exists, and a refresh
+in between shows exactly the same thing.
+
+While an answer is being worked on, the box is locked and says why; a second
+answer sent then would have been queued behind the first with nothing on the
+screen to say so. The form carries a one-time token, so a resubmission returns
+the answer already received instead of sending it twice.
+
+  document, transcript, job, form_token
+{% endcomment %}
+{% url 'resume:builder_act' document_id=document.public_id as act %}
+<div id="assistant-transcript"
+     hx-get="{% url 'resume:transcript' document_id=document.public_id %}"
+     hx-trigger="improve:queued from:body, improve:done from:body" hx-swap="outerHTML">
+  {% with busy=job.is_active %}
+  <ol class="space-y-3" aria-live="polite">
+    {% for turn in transcript %}
+      <li class="{% if turn.role == 'assistant' %}border-l-2 border-brand-600 bg-surface-sunken{% else %}border border-hairline bg-surface{% endif %} rounded-lg px-4 py-3">
+        <p class="overline">{% if turn.role == 'assistant' %}{{ site.name }}{% else %}You{% endif %}</p>
+        <p class="mt-1 whitespace-pre-line">{{ turn.text }}</p>
+      </li>
+    {% empty %}
+      <li class="text-content-muted">
+        Nothing yet. Describe your most recent job below, or open “Improve against your latest analysis” and press “Answer this” on a point.
+      </li>
+    {% endfor %}
+    {% if busy and job.kind == "turn" %}
+      <li class="flex items-center gap-2 rounded-lg border border-dashed border-hairline-strong px-4 py-3 text-meta text-content-muted">
+        {% icon "spinner" css_class="size-4 spin" %}
+        {{ site.name }} is working on your answer…
+      </li>
+    {% endif %}
+  </ol>
+
+  <form class="mt-4" hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+        hx-disabled-elt="find button[type=submit], find textarea">
+    <input type="hidden" name="command" value="turn">
+    <input type="hidden" name="token" value="{{ form_token }}">
+    <div class="field">
+      <label for="turn-text" class="label">Your answer</label>
+      <textarea id="turn-text" name="text" rows="4" class="input text-body-lg" required
+                aria-describedby="turn-note" {% if busy %}disabled{% endif %}
+                placeholder="What did you do, where, and what came of it? For example: I ran the till and trained two new cashiers at a supermarket."></textarea>
+    </div>
+    <div class="mt-3 flex flex-wrap items-center gap-3">
+      <button type="submit" class="btn btn-primary" {% if busy %}disabled{% endif %}>
+        {% icon "send" css_class="size-4" %}Send
+      </button>
+      <p id="turn-note" class="text-meta text-content-subtle">
+        {% if busy %}Working on your last answer. You can send the next one when it is done.{% else %}Only what you write is used. Nothing is made up.{% endif %}
+      </p>
+    </div>
+  </form>
+  {% endwith %}
+</div>

@@ -1,0 +1,54 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+An answer arrived for a question that is no longer being asked (`engine.StaleQuestion`).
+
+The page Back restored, a second tab, a form resubmitted after the interview
+moved on: nothing was saved, and the old question is not shown again as if it
+were still live. The candidate is told what happened and given the one way on —
+the question being asked now, or the result if the interview is over.
+
+What they typed is shown back, read-only, so nothing they wrote is lost without
+them seeing it. It is never submitted from here.
+
+  session, turn, finished, unsaved, message
+{% endcomment %}
+
+{% block title %}Interview — {{ site.name }}{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-2xl">
+    <section class="panel p-6 md:p-8" aria-labelledby="stale-title" role="status">
+      <p class="overline">{% if finished %}Interview complete{% else %}Already answered{% endif %}</p>
+      <h1 id="stale-title" class="mt-2 font-serif text-2xl">
+        {% if finished %}This interview has already finished{% else %}That question has already been answered{% endif %}
+      </h1>
+      <p class="mt-3 text-content-muted">
+        {% if finished %}
+          Your answers were saved when you finished, and nothing more can be added now.
+        {% else %}
+          This page was an older copy of the interview, from the Back button or another tab.
+          Your first answer to it is the one that counts, and the interview has moved on.
+        {% endif %}
+      </p>
+      <p class="mt-4 text-meta text-content-subtle">
+        The question on that page: <span class="text-content">“{{ turn.question_text }}”</span>
+      </p>
+
+      <div class="mt-6 flex flex-wrap gap-3">
+        {% if finished %}
+          <a href="{% url 'interviews:result' public_id=session.public_id %}" class="btn btn-primary">See your result</a>
+          <a href="{% url 'interviews:hub' %}" class="btn btn-secondary">All interviews</a>
+        {% else %}
+          <a href="{% url 'interviews:session' public_id=session.public_id %}" class="btn btn-primary">Continue interview</a>
+        {% endif %}
+      </div>
+
+      {% if unsaved %}
+        <details class="mt-6 border-t border-hairline pt-4">
+          <summary class="cursor-pointer text-meta font-medium">What you just wrote (not saved)</summary>
+          <p class="mt-2 whitespace-pre-line rounded-md border border-hairline bg-surface p-3 text-meta text-content-muted">{{ unsaved }}</p>
+        </details>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

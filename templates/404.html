@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% comment %}
+Not found.
+
+An error page has three jobs: say what happened in words the reader already
+knows, say why it might have happened, and offer the way out. "404" is a status
+code, not an explanation, so it is not the headline here.
+{% endcomment %}
+
+{% block title %}Page not found — {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="container-page">
+  <div class="mx-auto flex min-h-[60dvh] max-w-xl flex-col justify-center py-16">
+    <p class="overline">Error 404</p>
+    <h1 class="mt-4 text-display-sm">We can't find that page.</h1>
+    <p class="lede mt-4">
+      The link may be out of date, or the page may have moved. Nothing has gone
+      wrong with your account and nothing has been lost.
+    </p>
+
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a href="{% url 'core:home' %}" class="btn btn-primary">Go to the home page</a>
+      {% if features.jobs %}
+        <a href="{% url 'jobs:list' %}" class="btn btn-secondary">Browse jobs</a>
+      {% endif %}
+      {% if features.resume %}
+        <a href="{% url 'resume:upload' %}" class="btn btn-ghost">Analyse a CV</a>
+      {% endif %}
+    </div>
+
+    <p class="mt-8 border-t border-hairline pt-6 text-meta text-content-muted">
+      If you followed a link from inside the product, that's a bug on our side, so
+      <a href="{% url 'core:contact' %}" class="underline [text-underline-offset:0.2em]">tell us where you clicked</a>
+      and we'll fix it.
+    </p>
+  </div>
+</div>
+{% endblock %}

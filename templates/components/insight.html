@@ -1,0 +1,48 @@
+{% comment %}
+One finding in an analysis report.
+
+  {% include "components/insight.html" with finding=finding %}
+
+finding: {severity: strength|improve|critical, title, text, evidence (optional),
+          action (optional), action_url (optional)}
+
+Findings are rows in a list, not a grid of equal cards: a report where every
+item occupies the same rectangle tells the reader nothing about what to fix
+first. Severity is carried by an icon and a word, never by colour alone.
+{% endcomment %}
+<li class="row">
+  <div class="flex gap-3.5">
+    <span class="mt-0.5 shrink-0
+      {% if finding.severity == 'strength' %}text-success-fg{% elif finding.severity == 'critical' %}text-danger-fg{% else %}text-warning-fg{% endif %}">
+      {% if finding.severity == "strength" %}{% icon "check-circle" css_class="size-5" %}
+      {% elif finding.severity == "critical" %}{% icon "error" css_class="size-5" %}
+      {% else %}{% icon "warning" css_class="size-5" %}{% endif %}
+    </span>
+
+    <div class="min-w-0 flex-1">
+      <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+        <h3 class="text-body-lg">{{ finding.title }}</h3>
+        <span class="overline">
+          {% if finding.severity == "strength" %}Working well
+          {% elif finding.severity == "critical" %}Fix first
+          {% else %}Worth improving{% endif %}
+        </span>
+      </div>
+
+      <p class="mt-1.5 max-w-[68ch] text-body leading-relaxed text-content-muted">{{ finding.text }}</p>
+
+      {% if finding.evidence %}
+        <p class="mt-2.5 border-l-2 border-hairline-strong pl-3 font-mono text-caption leading-relaxed text-content-subtle">
+          {{ finding.evidence }}
+        </p>
+      {% endif %}
+
+      {% if finding.action %}
+        <p class="mt-2.5 text-meta leading-relaxed">
+          <span class="font-medium">Do this: </span>
+          <span class="text-content-muted">{{ finding.action }}</span>
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</li>

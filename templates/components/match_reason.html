@@ -1,0 +1,88 @@
+{% comment %}
+Why this role was recommended.
+
+  {% include "components/match_reason.html" with match=job.match %}
+
+The score is never shown on its own. A percentage with no working is a horoscope;
+what makes a match useful is the list of skills it agreed with, the list it
+did not, and the one sentence that says what to do about it.
+{% endcomment %}
+<div class="panel p-5 md:p-6">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h3 class="text-body-lg">Why you're seeing this</h3>
+      <p class="mt-1 text-meta text-content-muted">
+        Scored against your profile: your skills, experience and what you said you are looking for.
+      </p>
+    </div>
+    <div class="shrink-0 text-right">
+      <span class="block font-serif text-2xl leading-none tabular-nums">{{ match.score }}%</span>
+      <span class="mt-1 block overline">{{ match.label }}</span>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    {% include "components/meter.html" with value=match.score label="" %}
+  </div>
+
+  <dl class="mt-5 space-y-4">
+    <div>
+      <dt class="text-meta font-medium">
+        Skills you have: {{ match.matched|length }} of {{ match.required_count }}
+      </dt>
+      <dd>
+        <ul class="mt-2 flex flex-wrap gap-1.5">
+          {% for skill in match.matched %}
+            <li class="chip chip-match">{% icon "check" css_class="size-3" %}{{ skill }}</li>
+          {% endfor %}
+        </ul>
+      </dd>
+    </div>
+
+    {% if match.missing %}
+      <div>
+        <dt class="text-meta font-medium">Not found in your CV</dt>
+        <dd>
+          <ul class="mt-2 flex flex-wrap gap-1.5">
+            {% for skill in match.missing %}
+              <li class="chip chip-gap">{% icon "warning" css_class="size-3" %}{{ skill }}</li>
+            {% endfor %}
+          </ul>
+        </dd>
+      </div>
+    {% endif %}
+
+    {% for note in match.notes %}
+      {% comment %}
+        dt and dd sit directly in the group div. They were wrapped in a second
+        div beside the icon, which is not a valid description list (axe:
+        dlitem, definition-list) and lost the term/description pairing for
+        assistive technology.
+      {% endcomment %}
+      <div>
+          <dt class="flex gap-2.5 text-meta font-medium">
+            <span class="mt-px shrink-0 text-content-subtle">{% icon note.icon css_class="size-4.5" %}</span>{{ note.title }}
+          </dt>
+          <dd class="pl-7 text-meta leading-relaxed text-content-muted">
+            {{ note.text }}
+            {% if note.fix %}
+              {% comment %}
+                The remedy, on the only screen that can follow it. The notes
+                themselves are read by recruiters too, so they state the fact;
+                this sentence is the candidate's half of it.
+              {% endcomment %}
+              <span class="block text-content">{{ note.fix }}</span>
+            {% endif %}
+          </dd>
+      </div>
+    {% endfor %}
+  </dl>
+
+  {% if match.advice %}
+    <div class="mt-5 border-t border-hairline pt-4">
+      <p class="text-meta leading-relaxed text-content-muted">
+        <span class="font-medium text-content">Before you apply: </span>{{ match.advice }}
+      </p>
+    </div>
+  {% endif %}
+</div>

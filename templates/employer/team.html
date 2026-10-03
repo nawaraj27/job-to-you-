@@ -1,0 +1,151 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+Team management. Every control is gated on a grant rather than a role name, so a
+company with an unusual structure gets the right buttons without a code change
+(SRS 2.4). The services refuse whatever the page does not offer; hiding a control
+is only the courtesy.
+{% endcomment %}
+
+{% block title %}Team - {{ company.name }}{% endblock %}
+{% block page_heading %}Team{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">Who can act on behalf of {{ company.name }}, and what they may do.</p>
+{% endblock %}
+
+{% block page_body %}
+  {% if nomination %}
+    <section class="card mb-6 p-5" role="status" aria-labelledby="nomination-heading">
+      {% if nomination.nominee_id == membership.pk %}
+        <h2 class="font-medium" id="nomination-heading">
+          {{ nomination.nominated_by.user.get_full_name }} has asked you to own {{ company.name }}
+        </h2>
+        <p class="mt-1 text-sm text-content-muted">
+          Owners control billing, the team and the company record. If you accept,
+          {{ nomination.nominated_by.user.get_full_name }} becomes a company admin.
+        </p>
+        <form method="post" class="mt-3 flex flex-wrap gap-2">
+          {% csrf_token %}
+          <button class="btn btn-primary" type="submit" name="action" value="accept_ownership">Accept ownership</button>
+          <button class="btn btn-quiet" type="submit" name="action" value="decline_ownership">Decline</button>
+        </form>
+      {% else %}
+        <h2 class="font-medium" id="nomination-heading">
+          Waiting for {{ nomination.nominee.user.get_full_name }} to accept ownership
+        </h2>
+        <p class="mt-1 text-sm text-content-muted">
+          Nominated by {{ nomination.nominated_by.user.get_full_name }} on {{ nomination.created_at|date:"j M Y" }}.
+          Ownership has not changed yet.
+        </p>
+        {% if is_owner %}
+          <form method="post" class="mt-3">
+            {% csrf_token %}
+            <button class="btn btn-quiet" type="submit" name="action" value="cancel_nomination">Withdraw the nomination</button>
+          </form>
+        {% endif %}
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if can_manage_team %}
+    <form method="post" class="card mb-6 flex flex-wrap items-end gap-3 p-5">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="invite">
+
+      <div class="min-w-0 grow">
+        <label class="label" for="email">Invite by email</label>
+        <input class="input" id="email" name="email" type="email" required autocomplete="off">
+      </div>
+
+      <div>
+        <label class="label" for="role">Role</label>
+        <select class="input" id="role" name="role">
+          {% for value, label in assignable_roles %}
+            <option value="{{ value }}" {% if value == 'recruiter' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button class="btn btn-primary" type="submit">Send invitation</button>
+    </form>
+  {% endif %}
+
+  <h2 class="text-sm font-medium uppercase tracking-wide text-content-subtle">Members</h2>
+  <ul class="mt-2 divide-y divide-hairline">
+    {% for member in members %}
+      <li class="flex flex-wrap items-center gap-3 py-3">
+        <span class="min-w-0 grow">
+          <span class="block font-medium">{{ member.user.get_full_name }}{% if member.pk == membership.pk %} <span class="text-content-subtle">(you)</span>{% endif %}</span>
+          <span class="block break-all text-sm text-content-subtle">{{ member.user.email }}</span>
+        </span>
+        <span class="badge">{{ member.get_role_display }}</span>
+
+        {% if can_manage_team and member.pk != membership.pk %}
+          {% if member.role != 'owner' or is_owner %}
+            <form method="post" class="flex flex-wrap items-center gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="membership_id" value="{{ member.pk }}">
+              <label class="sr-only" for="role-{{ member.pk }}">Role for {{ member.user.get_full_name }}</label>
+              <select class="input" id="role-{{ member.pk }}" name="role">
+                {% for value, label in assignable_roles %}
+                  <option value="{{ value }}" {% if value == member.role %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-quiet" type="submit" name="action" value="role">
+                Change role<span class="sr-only"> for {{ member.user.get_full_name }}</span>
+              </button>
+              <button class="btn btn-quiet" type="submit" name="action" value="remove">
+                Remove<span class="sr-only"> {{ member.user.get_full_name }}</span>
+              </button>
+            </form>
+          {% endif %}
+
+          {% if is_owner and member.role != 'owner' and not nomination %}
+            <details class="w-full">
+              {# Wraps rather than overflows: with a long name the button was 324 px on a 320 px phone. #}
+              <summary class="btn btn-quiet h-auto max-w-full whitespace-normal text-left">Make {{ member.user.get_full_name }} the owner</summary>
+              <div class="mt-2 space-y-2 rounded border border-hairline p-3 text-sm">
+                <p>
+                  They are asked first, and nothing changes until they accept. If they do, they get
+                  full control of {{ company.name }}, including billing. You become a company admin.
+                </p>
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="membership_id" value="{{ member.pk }}">
+                  <button class="btn btn-primary h-auto max-w-full whitespace-normal text-left" type="submit" name="action" value="nominate">
+                    Ask {{ member.user.get_full_name }} to take over
+                  </button>
+                </form>
+              </div>
+            </details>
+          {% endif %}
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="py-6 text-sm text-content-subtle">No members yet.</li>
+    {% endfor %}
+  </ul>
+
+  <h2 class="mt-8 text-sm font-medium uppercase tracking-wide text-content-subtle">Pending invitations</h2>
+  {% if invites %}
+    <ul class="mt-2 divide-y divide-hairline">
+      {% for invite in invites %}
+        <li class="flex flex-wrap items-center gap-3 py-3">
+          <span class="min-w-0 grow break-all">{{ invite.email }}</span>
+          <span class="badge">{{ invite.get_role_display }}</span>
+          <span class="text-sm text-content-subtle">expires {{ invite.expires_at|date:"j M" }}</span>
+          {% if can_manage_team and invite.role != 'owner' or can_manage_team and is_owner %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="invite_id" value="{{ invite.pk }}">
+              <button class="btn btn-quiet" type="submit" name="action" value="revoke">
+                Withdraw<span class="sr-only"> invitation to {{ invite.email }}</span>
+              </button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mt-2 text-sm text-content-subtle">No invitations waiting.</p>
+  {% endif %}
+{% endblock %}

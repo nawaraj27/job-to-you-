@@ -1,0 +1,11 @@
+<div class="alert alert-success" role="status">
+  <span class="mt-px shrink-0 text-success-fg">{% icon "check-circle" css_class="size-5" %}</span>
+  <div>
+    <p class="alert-title">{{ upload.original_filename }} received</p>
+    <p class="mt-0.5 text-content-muted">
+      It is being scanned. Reading starts automatically once it is cleared.
+      <a href="{% url 'resume:processing' %}" class="underline [text-underline-offset:0.2em]">watch progress</a>.
+    </p>
+  </div>
+</div>
+{% include "resume/_upload_history.html" with oob=True %}

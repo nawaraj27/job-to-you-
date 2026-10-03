@@ -1,0 +1,43 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+The template gallery.
+
+Every card is a real document at A4 proportions, all drawing the same worked
+example (sample data, never the candidate's own draft). `suits` is the line they read next — a wall of names
+with no guidance is a row of coin flips.
+{% endcomment %}
+
+{% block title %}Templates — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Templates" text="Layout only. Changing template never changes a word of what your CV says." %}
+{% endblock %}
+
+{% block app_body %}
+  <form class="mb-8 flex flex-wrap items-end gap-3" hx-get="{% url 'resume:templates' %}"
+        hx-target="#template-results" hx-select="#template-results" hx-swap="outerHTML" hx-trigger="change, submit">
+    <div class="field grow">
+      <label for="t-q" class="label">Search</label>
+      <input id="t-q" name="q" class="input" value="{{ query }}" placeholder="Technical, plain, sidebar…">
+    </div>
+    <div class="field w-36">
+      <label for="t-tier" class="label">Plan</label>
+      <select id="t-tier" name="tier" class="input">
+        <option value="">All</option>
+        <option value="free" {% if tier == "free" %}selected{% endif %}>Free</option>
+        <option value="pro" {% if tier == "pro" %}selected{% endif %}>Pro</option>
+      </select>
+    </div>
+    <div class="field w-40">
+      <label for="t-layout" class="label">Layout</label>
+      <select id="t-layout" name="layout" class="input">
+        <option value="">Any</option>
+        {% for value, label in layout_options %}
+          <option value="{{ value }}" {% if layout == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  {% include "resume/_template_results.html" %}
+{% endblock %}

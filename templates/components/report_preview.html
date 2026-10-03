@@ -1,0 +1,37 @@
+{% comment %}
+The analysis report, rendered as a window into the running application.
+
+  {% include "components/report_preview.html" with preview=hero_preview %}
+
+Built from the same score ring and check rows the real analysis page uses, so
+it can never drift from what a user actually receives. It is deliberately not a
+"dashboard mockup": no invented charts, no numbers the product cannot produce.
+
+The window has no bottom edge — the section that contains it crops it, which is
+what makes it read as the application continuing past the fold rather than a
+card floating over a photograph.
+{% endcomment %}
+<div class="product-window">
+
+  <div class="product-window-bar">
+    <div class="flex min-w-0 items-center gap-2.5">
+      {% icon "document" css_class="size-4 shrink-0 text-content-subtle" %}
+      <span class="truncate text-meta font-medium">{{ preview.filename }}</span>
+    </div>
+    <span class="badge badge-neutral shrink-0">{{ preview.target_role }}</span>
+  </div>
+
+  <div class="flex items-center gap-4 px-5 py-5">
+    {% include "components/score_ring.html" with value=preview.score size=60 label="Resume score" %}
+    <div class="min-w-0">
+      <p class="text-sm font-semibold">Resume score</p>
+      <p class="text-meta text-content-muted">{{ preview.score_label }}</p>
+    </div>
+  </div>
+
+  <ul class="divide-y divide-hairline border-t border-hairline px-5 pt-1 pb-2">
+    {% for check in preview.checks %}
+      {% include "components/check_row.html" with check=check %}
+    {% endfor %}
+  </ul>
+</div>

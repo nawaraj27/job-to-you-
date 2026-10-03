@@ -1,0 +1,76 @@
+{% comment %} Signed-in account menu. Lives inside the header's Alpine scope. {% endcomment %}
+<div class="relative">
+  <button type="button"
+          class="flex items-center gap-2 rounded-md p-1 pr-2 transition-colors hover:bg-surface-sunken"
+          @click="toggleMenu('account')"
+          :aria-expanded="isOpen('account') ? 'true' : 'false'"
+          aria-controls="account-menu"
+          aria-haspopup="true">
+    <span class="grid size-8 place-items-center rounded-full bg-accent-soft text-caption font-semibold text-accent-content">
+      {{ user.initials }}
+    </span>
+    <span class="sr-only">Account menu</span>
+    {% icon "chevron-down" css_class="size-4 text-content-subtle" %}
+  </button>
+
+  <div id="account-menu" x-show="isOpen('account')" x-cloak x-transition.opacity.duration.150ms
+       class="menu-panel absolute right-0 top-full mt-1.5 w-64" role="menu">
+
+    <div class="px-3 py-2.5">
+      <p class="truncate text-sm font-medium">{{ user.get_full_name }}</p>
+      <p class="truncate text-meta text-content-subtle">{{ user.email }}</p>
+    </div>
+    <div class="divider my-1"></div>
+
+    {% comment %}
+      Every portal this person belongs to (SRS §2.1): the candidate side for
+      everybody, the hiring side for a member of a company or somebody who came
+      to hire, and the staff area for platform staff. It branched on sign-up
+      intent, so nobody who was both ever saw both.
+    {% endcomment %}
+    {% if features.dashboard %}
+      <a href="{% url 'dashboard:index' %}" class="menu-item" role="menuitem">
+        {% icon "home" css_class="size-4.5 text-content-subtle" %}<span>My overview</span>
+      </a>
+      <a href="{% url 'dashboard:profile' %}" class="menu-item" role="menuitem">
+        {% icon "user" css_class="size-4.5 text-content-subtle" %}<span>Profile</span>
+      </a>
+    {% endif %}
+    {% if features.jobs %}
+      <a href="{% url 'jobs:saved' %}" class="menu-item" role="menuitem">
+        {% icon "bookmark" css_class="size-4.5 text-content-subtle" %}<span>Saved jobs</span>
+      </a>
+    {% endif %}
+    {% if viewer.hires and features.employers %}
+      <div class="divider my-1"></div>
+      <a href="{% url 'employer:index' %}" class="menu-item" role="menuitem">
+        {% icon "building" css_class="size-4.5 text-content-subtle" %}<span>{% if viewer.has_company %}Hiring{% else %}Set up a company{% endif %}</span>
+      </a>
+    {% endif %}
+    {% if viewer.is_platform_staff %}
+      <a href="{% url 'staff:index' %}" class="menu-item" role="menuitem">
+        {% icon "shield" css_class="size-4.5 text-content-subtle" %}<span>Staff area</span>
+      </a>
+    {% endif %}
+    <div class="divider my-1"></div>
+    <a href="{% url 'settings:index' %}" class="menu-item" role="menuitem">
+      {% icon "sliders" css_class="size-4.5 text-content-subtle" %}<span>Settings</span>
+    </a>
+    {% comment %} One set of preferences per person, whichever side they work on (D-09). {% endcomment %}
+    <a href="{% url 'settings:notifications' %}" class="menu-item" role="menuitem">
+      {% icon "bell" css_class="size-4.5 text-content-subtle" %}<span>Notification settings</span>
+    </a>
+    <a href="{% url 'settings:security' %}" class="menu-item" role="menuitem">
+      {% icon "lock" css_class="size-4.5 text-content-subtle" %}<span>Security</span>
+    </a>
+
+    <div class="divider my-1"></div>
+
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="menu-item" role="menuitem">
+        {% icon "logout" css_class="size-4.5 text-content-subtle" %}<span>Sign out</span>
+      </button>
+    </form>
+  </div>
+</div>

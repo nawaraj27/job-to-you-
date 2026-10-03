@@ -1,0 +1,29 @@
+{% extends "layouts/auth.html" %}
+
+{% block title %}Sign in — {{ site.name }}{% endblock %}
+{% block auth_title %}Welcome back{% endblock %}
+{% block auth_subtitle %}Sign in to pick up where you left off.{% endblock %}
+
+{% block auth_body %}
+  <form method="post" class="space-y-4" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      {% include "components/alert.html" with level="error" text=form.non_field_errors.0 %}
+    {% endif %}
+
+    {% include "components/form_field.html" with field=form.username %}
+    {% include "components/form_field.html" with field=form.password %}
+    <p class="text-right text-sm">
+      <a href="{% url 'accounts:password_reset' %}" class="font-medium text-accent-content hover:underline">Forgot your password?</a>
+    </p>
+
+    <button type="submit" class="btn btn-primary btn-block btn-lg">Sign in</button>
+
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  </form>
+{% endblock %}
+
+{% block auth_footer %}
+  New here? <a href="{% url 'accounts:signup' %}{% if next %}?next={{ next|urlencode }}{% endif %}" class="font-medium text-accent-content hover:underline">Create an account</a>
+{% endblock %}

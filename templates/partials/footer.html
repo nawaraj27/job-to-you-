@@ -1,0 +1,56 @@
+{% now "Y" as current_year %}
+{% comment %}
+The site footer: a compact, secondary map of the public site.
+
+Rendered once, from `base.html`. Working screens (`layouts/app.html`) and the
+builder turn it off, and the sign-in screens have their own one-line footer.
+
+Why it used to run so long:
+  * the grid was `grid-cols-[1.4fr_repeat(auto-fit,minmax(9rem,1fr))]`, which
+    is not valid CSS — an auto-fit repeat cannot sit beside a flexible `fr`
+    track — so the browser dropped the rule and every group stacked in one
+    column, on a desktop as much as a phone;
+  * below 640px the groups were one column with 2.5rem between them and every
+    link on its own line, about 1,000px of footer on a phone;
+  * two employer links led to one URL.
+
+Now: brand across the top on small screens with the groups two-up under it,
+four-up on a tablet, one row on a desktop. Links come from
+`core.navigation.FOOTER_NAV`, which drops anything behind a feature that is off.
+{% endcomment %}
+<footer class="mt-auto border-t border-hairline bg-surface-sunken">
+  <div class="container-page py-10 md:py-12">
+    <div class="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 lg:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))] lg:gap-x-8">
+      <div class="col-span-2 md:col-span-4 lg:col-span-1 lg:pr-6">
+        {% include "components/brand_mark.html" %}
+        <p class="mt-3 max-w-xs text-sm leading-relaxed text-content-muted">
+          Analyse the CV you have, improve it honestly, and find the roles your skills fit.
+        </p>
+      </div>
+
+      {% for group in footer_nav %}
+        <nav aria-labelledby="footer-{{ forloop.counter }}" class="min-w-0">
+          <h2 id="footer-{{ forloop.counter }}" class="text-meta font-semibold">{{ group.title }}</h2>
+          <ul class="mt-3 space-y-2">
+            {% for link in group.links %}
+              <li>
+                <a href="{{ link.url }}"
+                   class="text-sm text-content-muted transition-colors hover:text-content">{{ link.label }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </nav>
+      {% endfor %}
+    </div>
+
+    <div class="mt-8 flex flex-col gap-3 border-t border-hairline pt-5 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-meta text-content-subtle">
+        &copy; {{ current_year }} {{ site.name }}. All rights reserved.
+      </p>
+      <a href="mailto:{{ site.support_email }}"
+         class="inline-flex items-center gap-1.5 text-meta text-content-subtle transition-colors hover:text-content">
+        {% icon "mail" css_class="size-4" %}{{ site.support_email }}
+      </a>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,396 @@
+{% comment %}
+One report: the score and its breakdown, the machine-readability checks, and
+the findings.
+
+Two things this template is careful about, both architectural rather than
+cosmetic:
+
+  * Every AI-written finding is labelled (SRS §9.3.9), and the verdict says
+    whether a model contributed. A report that reads the same whether or not a
+    model spoke is a report that cannot be audited by the person reading it.
+  * "Apply this fix" writes a suggestion, never the CV. The button says so.
+{% endcomment %}
+{% comment %}
+  While the model's half is still being written, a watcher in this region asks
+  about it every few seconds and stops the moment it lands. Polling rather than a
+  socket: it is one request every three seconds for at most a couple of
+  minutes, on a page one person is looking at, and a websocket for that is a
+  connection to keep alive forever to save a handful of GETs.
+{% endcomment %}
+{% comment %}
+  POLL-01: the poll no longer re-renders the report. It used to swap the whole
+  region every three seconds, so any button on it was replaced under the
+  pointer (a click in the browser landed on a removed element) and keyboard
+  focus went back to the top of the page. A hidden watcher asks instead; the
+  report is swapped once — when the review lands, or when the watcher gives up
+  and the report has to say it is late.
+{% endcomment %}
+<div id="analysis-report" class="stack">
+  {% if poll_review %}
+    <div id="review-watch" hidden
+         hx-get="{% url 'resume:analysis' %}?report={{ analysis.public_id }}&watch=1"
+         hx-trigger="every 3s" hx-select="#review-watch" hx-swap="outerHTML"></div>
+  {% elif watching and analysis %}
+    <div id="review-watch" hidden
+         hx-get="{% url 'resume:analysis' %}?report={{ analysis.public_id }}"
+         hx-trigger="load" hx-target="#analysis-report" hx-select="#analysis-report"
+         hx-swap="outerHTML"></div>
+  {% endif %}
+  {% if flash_restriction %}
+    {% comment %}A plan limit on "Analyse" is the common one: the free plan's
+    monthly analysis is spent. It used to read as a red failure line.{% endcomment %}
+    {% include "components/restriction.html" with restriction=flash_restriction %}
+  {% elif flash_error %}
+    <p class="text-meta text-danger-fg" role="status">{{ flash_error }}</p>
+  {% elif flash_message %}
+    <p class="text-meta text-content-muted" role="status">{{ flash_message }}</p>
+  {% endif %}
+
+  {% if analysis %}{% include "resume/_readiness.html" %}{% endif %}
+
+  {% if not analysis %}
+    <div class="card">
+      <div class="card-body">
+        <p class="text-content-muted">
+          This CV has not been analysed yet. The report scores machine readability,
+          evidence, skills coverage and structure, and tells you what to fix first.
+        </p>
+      </div>
+    </div>
+  {% else %}
+    <section class="card">
+      <div class="card-body">
+        <div class="flex items-baseline justify-between gap-4">
+          <div>
+            <p class="overline">Version {{ analysis.version.version_no }}</p>
+            <p class="mt-1 text-display">{{ analysis.score }}<span class="text-content-subtle text-base"> / 100</span></p>
+          </div>
+          <p class="text-caption text-content-subtle">
+            {{ analysis.created_at|date:"j M Y, H:i" }}
+            {% if analysis.has_ai %}· AI-assisted{% else %}· measured only{% endif %}
+          </p>
+        </div>
+
+        {% if analysis.headline %}<p class="mt-4 text-title">{{ analysis.headline }}</p>{% endif %}
+        <p class="mt-2">{{ analysis.verdict }}</p>
+
+        {% if analysis.enrichment == "pending" and poll_review %}
+          <p class="mt-3 flex items-center gap-2 text-meta text-content-muted" role="status">
+            {% icon "spinner" css_class="size-4 animate-spin" %}
+            The written review is being prepared now; it usually takes one to
+            two minutes. The score and every check below are final: they are
+            measured, never written by a model.
+          </p>
+        {% elif analysis.enrichment == "pending" %}
+          <p class="mt-3 flex items-center gap-2 text-meta text-content-muted" role="status">
+            {% icon "clock" css_class="size-4" %}
+            The written review is taking longer than usual. Everything below is
+            final; come back to this page later to read the review.
+          </p>
+          {% comment %}The page stops asking by itself after a few minutes
+          (CVP-02); the server still knows where the review is, so asking again
+          is one click rather than a hunt for the report.{% endcomment %}
+          <a href="{% url 'resume:analysis' %}?report={{ analysis.public_id }}"
+             class="btn btn-secondary btn-sm mt-3">Check again</a>
+        {% elif analysis.enrichment == "failed" %}
+          {% comment %}
+            The retry is here, and it is free. "Running the analysis again"
+            was the only way to try for prose, and that claims a monthly
+            allowance: one timeout on our side spent a free candidate's single
+            analysis for the month, and what they lost it for was the half
+            that had already worked.
+          {% endcomment %}
+          <p class="mt-3 text-meta text-content-subtle">
+            The written review could not be produced this time. The score and
+            every check below are unaffected, because they are never produced
+            by a model.
+          </p>
+          <button type="button" class="btn btn-secondary btn-sm mt-3"
+                  hx-post="{% url 'resume:analysis_fix' %}"
+                  hx-target="#analysis-report" hx-swap="outerHTML"
+                  hx-vals='{"command": "retry_review", "analysis": "{{ analysis.public_id }}"}'>
+            Try the written review again
+          </button>
+          <span class="ml-2 text-caption text-content-subtle">
+            Free. It does not use one of your analyses.
+          </span>
+        {% elif not analysis.has_ai %}
+          <p class="mt-3 text-meta text-content-subtle">
+            Written from the measurements. The AI review did not run for this report;
+            the score and every check below are unaffected, because they are never
+            produced by a model.
+          </p>
+        {% endif %}
+
+        <ul class="mt-6 space-y-3">
+          {% for component in analysis.breakdown.components %}
+            <li>
+              <div class="flex items-baseline justify-between gap-3">
+                <span class="text-meta">{{ component.label }}</span>
+                <span class="text-caption text-content-subtle">{{ component.points }} / {{ component.weight }}</span>
+              </div>
+              <div class="mt-1 h-1.5 w-full rounded-full bg-surface-sunken" role="presentation">
+                <div class="h-1.5 rounded-full bg-accent" style="width: {{ component.percent }}%"></div>
+              </div>
+              <p class="mt-1 text-caption text-content-muted">{{ component.note }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    {% comment %}
+      Against the advert.
+
+      The part of the report a candidate actually came for: what the role asks
+      for, what they already have, and what is missing. Every term here was
+      matched by the taxonomy against the words on the advert — no model saw
+      it, so each one can be pointed at in the text they pasted.
+
+      Missing is stated as a fact, never as an instruction to add it. A CV that
+      claims a skill to pass a filter is a CV that fails the interview, and the
+      wording is deliberately "not mentioned" rather than "add this".
+    {% endcomment %}
+    {% if analysis.target.percent is not None %}
+      <section class="card">
+        <div class="card-body">
+          <div class="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 class="stack-title">Against this role</h2>
+            <p class="text-meta text-content-muted">
+              {{ analysis.target.matched|length }} of {{ analysis.target.wanted }}
+              skills it asks for · {{ analysis.target.percent }}%
+            </p>
+          </div>
+
+          {% if analysis.target.role %}
+            <p class="mt-1 text-meta text-content-subtle">{{ analysis.target.role }}</p>
+          {% endif %}
+
+          <div class="mt-2 h-2 w-full rounded-full bg-surface-sunken" role="presentation">
+            <div class="h-2 rounded-full bg-accent" style="width: {{ analysis.target.percent }}%"></div>
+          </div>
+
+          {% if analysis.target.matched %}
+            <p class="overline mt-6">On your CV</p>
+            <ul class="mt-2 flex flex-wrap gap-1.5">
+              {% for skill in analysis.target.matched %}
+                <li class="chip chip-match">{{ skill }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          {% if analysis.target.missing %}
+            <p class="overline mt-6">Asked for, not mentioned</p>
+            <ul class="mt-2 flex flex-wrap gap-1.5">
+              {% for skill in analysis.target.missing %}
+                {% comment %}A warning chip with its icon, like every gap chip
+                in the design system (UI-01: the dashed outline it used to have
+                read as a broken label in manual testing).{% endcomment %}
+                <li class="chip chip-gap">{% icon "warning" css_class="size-3" %}{{ skill }}</li>
+              {% endfor %}
+            </ul>
+            <p class="mt-2 text-caption text-content-muted">
+              Add the ones you have actually done, in the bullet that shows you
+              doing them. Adding one you have not is how an interview ends early.
+            </p>
+            {% comment %}
+            The gaps, handed to the assistant (ENH-01): it asks about each one
+            — have you used it, where, what did you do — and drafts bullets
+            only from the answers, for you to accept. A "no" leaves the gap a
+            gap; nothing from the advert is written in for you.
+            {% endcomment %}
+            <form method="post" action="{% url 'resume:assistant_target' document_id=analysis.version.document.public_id %}" class="mt-3">
+              {% csrf_token %}
+              <input type="hidden" name="analysis" value="{{ analysis.public_id }}">
+              <button type="submit" class="btn btn-secondary btn-sm">
+                {% icon "message" css_class="size-4" %}Answer questions about these
+              </button>
+            </form>
+          {% endif %}
+
+          {% if analysis.target.missing_keywords %}
+            <p class="overline mt-6">Words this advert leans on</p>
+            <ul class="mt-2 flex flex-wrap gap-1.5">
+              {% for word in analysis.target.missing_keywords %}
+                <li class="chip">{{ word }}</li>
+              {% endfor %}
+            </ul>
+            <p class="mt-2 text-caption text-content-muted">
+              Not skills, so they are not scored, but a keyword search run by a
+              recruiter will look for them, and none of them are on your CV.
+            </p>
+          {% endif %}
+
+          {% if document %}
+            <a href="{% url 'resume:editor' document_id=document.public_id %}" class="btn btn-secondary mt-6">
+              Edit my CV
+            </a>
+          {% endif %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if improve.total %}
+      {% comment %}
+        The hand-off from "what is wrong" to "fix it". The report used to end
+        with a link to the editor, and the candidate carried the findings in
+        their head; both improvement screens now open on this report's
+        findings (`resumes.improvement`).
+      {% endcomment %}
+      <section class="panel p-5 md:p-6" aria-labelledby="improve-title">
+        <p class="overline">Next step</p>
+        <h2 id="improve-title" class="mt-1 font-serif text-xl">
+          Improve this CV: {{ improve.total }} point{{ improve.total|pluralize }} to work on
+        </h2>
+        <p class="mt-1.5 max-w-[62ch] text-meta text-content-muted">
+          {% if improve.reword %}{{ improve.reword }} can be reworded from what your CV already says. {% endif %}
+          {% if improve.input %}{{ improve.input }} need{{ improve.input|pluralize:"s," }} something only you know. We ask; we never guess.{% endif %}
+          Both ways start from exactly the findings below.
+        </p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <a href="{% url 'resume:guided' document_id=document.public_id %}" class="card card-interactive p-4 block">
+            <span class="flex items-center gap-2 font-medium">{% icon "list" css_class="size-4" %}Guided: do it yourself</span>
+            <span class="mt-1 block text-meta text-content-muted">Each point with why it matters, where it is and what to add. Answer in your own words.</span>
+          </a>
+          <a href="{% url 'resume:assistant' document_id=document.public_id %}" class="card card-interactive p-4 block">
+            <span class="flex items-center gap-2 font-medium">{% icon "lightbulb" css_class="size-4" %}Assisted: review, then apply</span>
+            <span class="mt-1 block text-meta text-content-muted">See what we would change and why, answer the questions, then apply only what you agree with.</span>
+          </a>
+        </div>
+      </section>
+    {% endif %}
+
+    {% if history|length > 1 %}
+      <section>
+        <h2 class="stack-title">Score history</h2>
+        <ul class="mt-3 space-y-1">
+          {% for point in history reversed %}
+            <li class="flex items-center justify-between gap-3 text-meta">
+              <span class="text-content-muted">
+                Version {{ point.version_no }}, {{ point.at|date:"j M Y" }}
+                {% if not point.comparable %}
+                  <span class="text-content-subtle">(scored by an older method)</span>
+                {% endif %}
+              </span>
+              <span>{{ point.score }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    <section>
+      <h2 class="stack-title">Will a machine read it</h2>
+      <p class="mt-1 text-meta text-content-subtle">
+        Measured, never guessed. No model is involved in any of these.
+      </p>
+      <ul class="mt-3 space-y-2">
+        {% for check in checks %}
+          <li class="flex gap-3">
+            <span class="text-meta {% if check.status == 'pass' %}text-success-fg{% elif check.status == 'fail' %}text-danger-fg{% else %}text-content-muted{% endif %}">
+              {% if check.status == 'pass' %}Pass{% elif check.status == 'fail' %}Fail{% else %}Check{% endif %}
+            </span>
+            <span>
+              <span class="text-meta">{{ check.label }}</span>
+              <span class="block text-caption text-content-muted">{{ check.note }}</span>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    {% url 'resume:analysis_fix' as fix_url %}
+
+    {% comment %}
+      Drafted rewrites, decided here.
+
+      The accept path is `suggestions.accept`, exactly as in the editor — this
+      is a second place to press the button, not a second way to change a CV.
+      Both are shown together with the original, because "is this better than
+      what I wrote" is a comparison and not a leap of faith.
+    {% endcomment %}
+    {% if suggestions %}
+      <section>
+        <h2 class="stack-title">Drafted rewrites</h2>
+        <p class="mt-1 text-meta text-content-subtle">
+          Nothing here is on your CV yet. Accepting one writes it to your draft,
+          where undo still works.
+        </p>
+        <ul class="mt-3 space-y-3">
+          {% for suggestion in suggestions %}
+            <li class="card">
+              <div class="card-body">
+                <p class="text-meta text-content-muted">
+                  {{ suggestion.rationale }}
+                  {% if suggestion.ai_run_id %}
+                    <span class="text-caption text-content-subtle">· written by AI</span>
+                  {% endif %}
+                </p>
+
+                {% if suggestion.original %}
+                  <p class="mt-3 overline">Now</p>
+                  <p class="mt-1 text-content-muted">{{ suggestion.original }}</p>
+                {% endif %}
+
+                <p class="mt-3 overline">Proposed</p>
+                <p class="mt-1">{{ suggestion.proposed }}</p>
+
+                <div class="mt-4 flex gap-2">
+                  <button type="button" class="btn btn-secondary btn-sm"
+                          hx-post="{{ fix_url }}" hx-target="#analysis-report" hx-swap="outerHTML"
+                          hx-vals='{"command": "accept", "id": "{{ suggestion.pk }}", "document": "{{ document.public_id }}"}'>
+                    Use this
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-sm"
+                          hx-post="{{ fix_url }}" hx-target="#analysis-report" hx-swap="outerHTML"
+                          hx-vals='{"command": "reject", "id": "{{ suggestion.pk }}", "document": "{{ document.public_id }}"}'>
+                    Keep mine
+                  </button>
+                </div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% for group in findings %}
+      {% with rows=group.rows %}
+        {% if rows %}
+          <section>
+            <h2 class="stack-title">{{ group.label }}</h2>
+            <ul class="mt-3 space-y-3">
+              {% for finding in rows %}
+                <li class="card">
+                  <div class="card-body">
+                    <div class="flex items-baseline justify-between gap-3">
+                      <p class="text-meta">{{ finding.title }}</p>
+                      {% if finding.from_ai %}
+                        <span class="text-caption text-content-subtle">AI</span>
+                      {% endif %}
+                    </div>
+                    {% if finding.text %}<p class="mt-1 text-content-muted">{{ finding.text }}</p>{% endif %}
+                    {% if finding.evidence %}
+                      <p class="mt-2 border-l-2 border-hairline pl-3 text-caption text-content-subtle">{{ finding.evidence }}</p>
+                    {% endif %}
+                    {% if finding.action %}<p class="mt-2 text-meta">{{ finding.action }}</p>{% endif %}
+                    {% if finding.is_fixable %}
+                      <button type="button" class="btn btn-secondary btn-sm mt-3"
+                              hx-post="{{ fix_url }}" hx-target="#analysis-report" hx-swap="outerHTML"
+                              hx-vals='{"finding": "{{ finding.pk }}"}'>
+                        Draft a fix
+                      </button>
+                      <p class="mt-1 text-caption text-content-subtle">
+                        Drafts a rewrite above. Nothing changes on your CV until you accept it.
+                      </p>
+                    {% endif %}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+      {% endwith %}
+    {% endfor %}
+  {% endif %}
+</div>

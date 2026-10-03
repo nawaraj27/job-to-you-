@@ -1,0 +1,33 @@
+{% comment %}
+The wide save button in the job page's decision column.
+
+Same record and same endpoint as the icon control in a list row, but a
+different shape — a full-width labelled button belongs in the decision column,
+where an unlabelled bookmark glyph would be the most important control on the
+page rendered as decoration.
+{% endcomment %}
+{% with saved=job.slug|in_list:saved_slugs %}
+<span id="save-button-{{ job.slug }}" class="contents">
+  {% if can_save %}
+    <button type="button" class="btn btn-secondary btn-block mt-2"
+            hx-post="{% url 'jobs:act' %}"
+            hx-vals='{"command": "save", "slug": "{{ job.slug }}", "render": "save_button"}'
+            hx-target="#save-button-{{ job.slug }}" hx-swap="outerHTML"
+            aria-pressed="{{ saved|yesno:'true,false' }}">
+      {% if saved %}
+        {% icon "bookmark" css_class="size-4 text-accent" fill="currentColor" %}Saved
+      {% else %}
+        {% icon "bookmark" css_class="size-4" %}Save for later
+      {% endif %}
+    </button>
+  {% else %}
+    <a href="{% url 'accounts:login' %}?next={{ job.url|urlencode }}"
+       class="btn btn-secondary btn-block mt-2">
+      {% icon "bookmark" css_class="size-4" %}Sign in to save
+    </a>
+  {% endif %}
+  {% if error %}
+    <p class="mt-2 text-meta text-danger-fg" role="alert">{{ error }}</p>
+  {% endif %}
+</span>
+{% endwith %}

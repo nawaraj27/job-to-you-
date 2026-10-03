@@ -1,0 +1,53 @@
+{% comment %}
+History, made comparable.
+
+A list of timestamps is not a history: "Version 2 · Saved · 14:03" beside
+"Version 3 · Saved · 14:05" tells a candidate nothing about which one to bring
+back, and the only way to find out used to be to restore one and look at it.
+Each row now carries the note the candidate wrote when they saved and a count
+of what is in that version, which is the difference people are actually looking
+for — the long one, before it was cut down.
+
+Restore replaces the working draft, so the row says so rather than leaving
+somebody to discover it. Undo takes it back; the draft keeps a snapshot ring
+and a restore is one more entry in it.
+{% endcomment %}
+{% url 'resume:builder_act' document_id=document.public_id as act %}
+<section>
+  <div class="stack-head">
+    <h2 class="stack-title">History</h2>
+    <p class="stack-note">Restoring replaces what is in the editor now. Undo brings it back.</p>
+  </div>
+  <ul class="mt-3 space-y-3">
+    {% for version in versions %}
+      <li class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-meta font-medium">
+            Version {{ version.version_no }}
+            {% if version.version_no == status.version_no %}
+              <span class="text-caption font-normal text-content-subtle">· current</span>
+            {% endif %}
+          </p>
+          {% if version.change_note %}
+            <p class="text-meta measure">{{ version.change_note }}</p>
+          {% endif %}
+          <p class="text-caption text-content-subtle">
+            {% if version.redacted_at %}
+              Erased {{ version.redacted_at|date:"j M Y" }} . The content is gone and cannot come back.
+            {% else %}
+              {{ version.summary }} · {{ version.get_created_reason_display }} ·
+              {{ version.finalized_at|date:"j M Y, H:i" }}
+            {% endif %}
+          </p>
+        </div>
+        {% if not version.redacted_at %}
+          <button type="button" class="link-editorial shrink-0"
+                  hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                  hx-vals='{"command": "restore_version", "version": "{{ version.version_no }}"}'>Restore</button>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="text-meta text-content-muted">No versions yet. Saving one freezes the document as it is now.</li>
+    {% endfor %}
+  </ul>
+</section>

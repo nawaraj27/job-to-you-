@@ -1,0 +1,72 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Candidate-access anomalies (SRS §15.4, §21).
+
+What this watches for is a paying employer account behaving like a scraper —
+bulk export, high-volume profile viewing, unusual message volume. The signals
+have been written to the audit log since P15; this is the screen that gives
+them an operator, which is why P15 deferred it rather than building a queue
+nobody would open.
+
+An alert is not a verdict. Every row here is a shape worth a person looking at,
+and the platform deliberately takes no automatic action on one — suspending a
+company because a recruiter had a busy Tuesday is worse than the thing it
+prevents.
+{% endcomment %}
+
+{% block title %}Anomalies - staff{% endblock %}
+{% block page_heading %}Candidate-access anomalies{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    Shapes worth a person looking at. Nothing here has been acted on automatically.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  {% include "staff/_tabs.html" %}
+
+  <form method="get" class="mb-6 flex items-end gap-3">
+    <div class="field">
+      <label class="label" for="days">Window</label>
+      <select class="input" id="days" name="days" onchange="this.form.submit()">
+        {% for option in windows %}
+          <option value="{{ option }}" {% if option == days %}selected{% endif %}>
+            Last {{ option }} day{{ option|pluralize }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <p class="text-caption text-content-subtle pb-3">
+      {{ rows|length }} signal{{ rows|length|pluralize }}, {{ alerts }} of them alerts.
+    </p>
+  </form>
+
+  {% if not rows %}
+    <p class="text-content-muted">Nothing in this window. That is the normal state.</p>
+  {% else %}
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr><th>When</th><th>Company</th><th>Who</th><th>Signal</th><th>Observed</th><th>Threshold</th></tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td class="whitespace-nowrap">{{ row.created_at|date:"j M, H:i" }}</td>
+              <td>{{ row.company.name|default:"—" }}</td>
+              <td>{{ row.actor.get_full_name|default:"—" }}</td>
+              <td>
+                {{ row.signal_label|default:"—" }}
+                {% if row.metadata.severity == "alert" %}
+                  <span class="badge badge-critical">alert</span>
+                {% endif %}
+              </td>
+              <td class="tabular-nums">{{ row.metadata.observed }}</td>
+              <td class="tabular-nums">{{ row.metadata.threshold }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "careerai",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["manage.py", "runserver", "127.0.0.1:8137"],
+      "port": 8137
+    },
+    {
+      "name": "careerai-alt",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["manage.py", "runserver", "127.0.0.1:8142"],
+      "port": 8142
+    }
+  ]
+}

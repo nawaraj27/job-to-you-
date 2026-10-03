@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% comment %}
+Public company profile.
+
+Credibility here comes from specifics — headcount, founding year, what the
+teams actually do — and from a verification state that is reported honestly.
+An unverified company says so; it does not simply omit the badge and hope.
+{% endcomment %}
+
+{% block title %}{{ company.name }} — {{ site.name }}{% endblock %}
+{% block meta_description %}{{ company.tagline }}{% endblock %}
+
+{% block content %}
+<div class="container-page">
+
+  <div class="app-head">
+    <a href="{% url 'jobs:list' %}"
+       class="mb-4 inline-flex items-center gap-1.5 text-meta font-medium text-content-muted transition-colors hover:text-content">
+      {% icon "arrow-left" css_class="size-4" %}All jobs
+    </a>
+
+    <div class="flex flex-wrap items-start gap-5">
+      {% include "components/avatar.html" with name=company.name initials=company.initials logo=company.logo size="xl" %}
+
+      <div class="min-w-0 flex-1">
+        <h1 class="app-title">{{ company.name }}</h1>
+        <p class="mt-2 max-w-[58ch] text-body-lg leading-relaxed text-content-muted">{{ company.tagline }}</p>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          {% include "components/status_pill.html" with status=company.verification %}
+          {% if company.website %}
+            <a href="https://{{ company.website }}" rel="noopener nofollow" target="_blank"
+               class="badge badge-neutral">
+              {% icon "external" css_class="size-3.5" %}{{ company.website }}
+            </a>
+          {% endif %}
+        </div>
+        <div class="mt-4">{% include "jobs/_follow_control.html" %}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-10 py-8 lg:grid-cols-[1fr_18rem] lg:gap-14 lg:py-10">
+    <div class="min-w-0">
+      <div class="stack">
+        <section>
+          <div class="stack-head"><h2 class="stack-title">About</h2></div>
+          {% for paragraph in company.about %}
+            <p class="measure mt-4 text-body-lg leading-relaxed text-content-muted">{{ paragraph }}</p>
+          {% empty %}
+            <p class="measure mt-4 text-body-lg leading-relaxed text-content-muted">
+              This company has not written a profile yet. What it is hiring for is below.
+            </p>
+          {% endfor %}
+        </section>
+
+        {% if company_updates.events or company_updates.announcements %}
+          {% comment %}FOL-03: what the company shares with followers, shown to
+          everyone — following decides who is told, not who may read it.{% endcomment %}
+          <section id="updates" aria-labelledby="updates-title">
+            <div class="stack-head"><h2 id="updates-title" class="stack-title">News and events</h2></div>
+            <ul class="mt-4 space-y-4">
+              {% for update in company_updates.events %}
+                <li>
+                  <p class="font-medium">{{ update.title }}</p>
+                  <p class="mt-1 text-meta text-content-muted">
+                    Event · {{ update.starts_at|date:"l j F, H:i" }}{% if update.location %} · {{ update.location }}{% endif %}
+                  </p>
+                  {% if update.body %}<p class="measure mt-1 text-content-muted">{{ update.body|linebreaksbr }}</p>{% endif %}
+                </li>
+              {% endfor %}
+              {% for update in company_updates.announcements %}
+                <li>
+                  <p class="font-medium">{{ update.title }}</p>
+                  <p class="mt-1 text-meta text-content-muted">Announcement · {{ update.created_at|date:"j M Y" }}</p>
+                  {% if update.body %}<p class="measure mt-1 text-content-muted">{{ update.body|linebreaksbr }}</p>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+
+        <section>
+          <div class="stack-head">
+            <h2 class="stack-title">Open roles</h2>
+            <span class="text-meta text-content-muted tabular-nums">{{ job_count }}</span>
+          </div>
+          {% if jobs %}
+            <ul class="rows mt-2">
+              {% for job in jobs %}
+                {% include "components/job_row.html" with job=job %}
+              {% endfor %}
+            </ul>
+          {% else %}
+            {% include "components/empty_state.html" with icon="briefcase" title="No open roles right now" text="This company has hired through the platform before but is not advertising today." %}
+          {% endif %}
+        </section>
+      </div>
+    </div>
+
+    <aside>
+      <dl class="space-y-4 border-t-2 border-hairline-strong pt-5 text-sm">
+        <div>
+          <dt class="overline">Industry</dt>
+          <dd class="mt-1 font-medium">{{ company.industry }}</dd>
+        </div>
+        <div>
+          <dt class="overline">Size</dt>
+          <dd class="mt-1 font-medium">{{ company.size }}</dd>
+        </div>
+        <div>
+          <dt class="overline">Head office</dt>
+          <dd class="mt-1 font-medium">{{ company.location }}</dd>
+        </div>
+        <div>
+          <dt class="overline">Founded</dt>
+          <dd class="mt-1 font-medium tabular-nums">{{ company.founded }}</dd>
+        </div>
+      </dl>
+
+      <div class="panel mt-6 p-5">
+        <h2 class="text-body-lg">What verification means</h2>
+        <p class="mt-2 text-meta leading-relaxed text-content-muted">
+          {% if company.verified == "verified" %}
+            This company submitted registration documents and a domain-matched email
+            address, and both were checked by our team.
+          {% elif company.verified == "pending" %}
+            Documents have been submitted and are with our team. Listings stay live
+            during review.
+          {% else %}
+            This company has not submitted registration documents. Its listings are
+            live, but treat unusual requests with the same care you would anywhere else.
+          {% endif %}
+        </p>
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}

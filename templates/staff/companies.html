@@ -1,0 +1,60 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Find a company (SRS §2.3). Support and above read; the actions are on each
+company's own page.
+{% endcomment %}
+
+{% block title %}Companies - staff{% endblock %}
+{% block page_heading %}Companies{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">Every company on the platform, and whether it is active.</p>
+{% endblock %}
+
+{% block page_body %}
+  {% include "staff/_tabs.html" %}
+
+  <form method="get" class="flex flex-wrap items-end gap-3" role="search">
+    <div class="field">
+      <label for="company-q" class="label">Name or address</label>
+      <input id="company-q" name="q" class="input" value="{{ query }}" maxlength="100">
+    </div>
+    <div class="field">
+      <label for="company-state" class="label">State</label>
+      <select id="company-state" name="state" class="select">
+        <option value="">Any</option>
+        {% for value, label in states %}
+          <option value="{{ value }}" {% if value == state %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-secondary">Search</button>
+  </form>
+
+  <div class="mt-6 overflow-x-auto">
+    <table class="table">
+      <caption class="sr-only">Companies</caption>
+      <thead><tr><th scope="col">Company</th><th scope="col">State</th><th scope="col">Verification</th><th scope="col">Members</th><th scope="col">Live jobs</th></tr></thead>
+      <tbody>
+        {% for company in page %}
+          <tr>
+            <th scope="row"><a href="{% url 'staff:company' company.slug %}" class="link-editorial">{{ company.name }}</a></th>
+            <td>{% if company.state == "suspended" %}<span class="badge badge-critical">Suspended</span>{% else %}{{ company.get_state_display }}{% endif %}</td>
+            <td>{{ company.get_verification_state_display }}</td>
+            <td class="tabular-nums">{{ company.members }}</td>
+            <td class="tabular-nums">{{ company.live_jobs }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="text-content-muted">No companies match.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page.has_other_pages %}
+    <nav class="mt-4 flex gap-3" aria-label="Pages">
+      {% if page.has_previous %}<a class="btn btn-ghost btn-sm" href="?q={{ query|urlencode }}&state={{ state }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}
+      <span class="self-center text-meta">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}<a class="btn btn-ghost btn-sm" href="?q={{ query|urlencode }}&state={{ state }}&page={{ page.next_page_number }}">Next</a>{% endif %}
+    </nav>
+  {% endif %}
+{% endblock %}

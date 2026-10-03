@@ -1,0 +1,21 @@
+{
+  "name": "careerai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CareerAI - career platform frontend build pipeline (Tailwind CSS v4).",
+  "scripts": {
+    "css:dev": "tailwindcss -i ./static/css/src/input.css -o ./static/css/dist/site.css --watch",
+    "css:build": "tailwindcss -i ./static/css/src/input.css -o ./static/css/dist/site.css --minify",
+    "vendor": "node ./scripts/sync-vendor.mjs",
+    "build": "npm run vendor && npm run css:build"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "tailwindcss": "^4.1.0"
+  },
+  "dependencies": {
+    "@alpinejs/csp": "^3.17.1",
+    "alpinejs": "^3.14.9",
+    "htmx.org": "^2.0.4"
+  }
+}

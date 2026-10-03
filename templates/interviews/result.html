@@ -1,0 +1,262 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+What the candidate is allowed to see (FR-10.11).
+
+Practice is always theirs. An employer interview shows a result only once the
+employer chose to share it — and when they have not, this page says so plainly
+rather than showing an empty panel. "We'll be in touch" with no explanation is
+the single most-disliked thing about applying anywhere; saying "they have not
+shared feedback" is at least true, and the candidate knows where they stand.
+
+The transcript is always shown. It is what the candidate wrote, and there is no
+argument for hiding somebody's own words from them.
+{% endcomment %}
+
+{% block title %}Interview result — {{ site.name }}{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-2xl stack">
+    <div>
+      <p class="overline">
+        {% if session.is_practice %}Practice{% else %}{{ session.application.job.title }}{% endif %}
+      </p>
+      {% comment %}MIS-02: a practice run for a posting is named after the
+      posting, not after the template it started from ("General practice
+      interview" above questions about a Marketing Specialist role).{% endcomment %}
+      <h1 class="mt-1 text-display">{% if session.plan.job_title %}{{ session.plan.job_title }}{% else %}{{ session.template.name }}{% endif %}</h1>
+      <p class="mt-1 text-meta text-content-subtle">
+        {{ session.created_at|date:"j M Y" }} · {{ session.get_state_display }}
+      </p>
+    </div>
+
+    {% if session.state == "scheduled" %}
+      {% comment %}
+        Booking a time redirects here, and this page said the company "has not
+        shared feedback from this interview" — about an interview that had not
+        happened yet.
+      {% endcomment %}
+      <div class="card">
+        <div class="card-body">
+          <p class="text-body-lg" role="status">
+            Booked for {{ session.scheduled_at|date:"l j F, H:i" }}
+          </p>
+          <p class="mt-2 text-content-muted">
+            You can join from your interviews page from fifteen minutes before.
+            Both sides are told if it moves.
+          </p>
+          {% if session.can_join_now %}
+            <a href="{% url 'interviews:join' public_id=session.public_id %}"
+               class="btn btn-primary btn-sm mt-3">Join now</a>
+          {% endif %}
+        </div>
+      </div>
+    {% elif session.state == "in_progress" and session.kind == "live" %}
+      <div class="card">
+        <div class="card-body flex flex-wrap items-center justify-between gap-3">
+          <p class="text-content-muted">This interview is under way.</p>
+          {% if session.can_join_now %}
+            <a href="{% url 'interviews:join' public_id=session.public_id %}"
+               class="btn btn-primary btn-sm">Rejoin</a>
+          {% endif %}
+        </div>
+      </div>
+    {% elif session.state == "in_progress" %}
+      <div class="card">
+        <div class="card-body flex flex-wrap items-center justify-between gap-3">
+          <p class="text-content-muted">This interview is not finished.</p>
+          <a href="{% url 'interviews:session' public_id=session.public_id %}"
+             class="btn btn-primary btn-sm">Carry on</a>
+        </div>
+      </div>
+    {% elif pending %}
+      {% comment %}
+        Waits by itself.
+
+        The page said "this usually takes a minute or two" and then did
+        nothing: no refresh, no change, no sign of life. Somebody who had just
+        answered eight questions was left reloading the page to find out
+        whether their interview had been read, which is the exact feeling this
+        sentence was written to prevent. It polls now, and stops on its own
+        when the result arrives, because the block it replaces itself with
+        carries no trigger.
+      {% endcomment %}
+      <div class="card" id="interview-outcome"
+           hx-get="{% url 'interviews:result' public_id=session.public_id %}"
+           hx-trigger="every 5s"
+           hx-select="#interview-outcome"
+           hx-target="this"
+           hx-swap="outerHTML">
+        <div class="card-body">
+          <p class="text-content-muted">
+            Your answers are being read. This usually takes a minute or two, and you do
+            not need to wait here, and nothing more is required from you.
+          </p>
+          <p class="mt-2 text-meta text-content-subtle" role="status">
+            This page updates itself when the feedback is ready.
+          </p>
+        </div>
+      </div>
+    {% elif unread %}
+      {% comment %}
+        Scoring was asked for, and asked again for a day, and never arrived —
+        the model was down or the work was lost. "Being read" had become untrue,
+        and polling for it for ever helped nobody. Same id as the waiting block,
+        so a page that is still polling swaps to this and stops.
+      {% endcomment %}
+      <div class="card" id="interview-outcome">
+        <div class="card-body">
+          <p class="text-content">We could not read your answers this time.</p>
+          <p class="mt-1 text-meta text-content-muted">
+            {% if session.is_practice %}
+              The scoring service did not respond. Nothing is recorded against you, and you
+              can practise again whenever you like.
+            {% else %}
+              The scoring service did not respond. Your answers are kept, and the employer
+              can still read them.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    {% elif outcome %}
+      <section class="card" id="interview-outcome">
+        <div class="card-body">
+          {% comment %}
+            A rehearsal is not a hiring decision.
+
+            Practice was headlined "No — 2.50 / 5", which is the verdict an
+            employer would reach and not a thing anybody can act on: nobody is
+            hiring here, nobody else can see it, and the candidate came to find
+            out what to work on. The score stays — it is the same scoring an
+            employer would see, which is the reason to practise at all — but
+            the sentence in front of it is the one that tells them where to go
+            next.
+          {% endcomment %}
+          {% if session.is_practice %}
+            <div class="flex items-baseline justify-between gap-4">
+              <p class="text-body-lg">
+                {% if practice_weakest %}
+                  Work on {{ practice_weakest.competency_label|lower }}
+                {% else %}
+                  Practice complete
+                {% endif %}
+              </p>
+              <p class="text-caption text-content-subtle tabular-nums">
+                {{ outcome.average_score }} / 5
+              </p>
+            </div>
+            {% if practice_weakest %}
+              <p class="mt-3">
+                Your weakest answer was on
+                <span class="font-medium">{{ practice_weakest.competency_label|lower }}</span>
+                ({{ practice_weakest.score }} / 5){% if practice_strongest %}, and your
+                strongest was on
+                <span class="font-medium">{{ practice_strongest.competency_label|lower }}</span>
+                ({{ practice_strongest.score }} / 5){% endif %}. The reasoning for
+                every answer is below. It quotes what you actually said.
+              </p>
+            {% endif %}
+            <p class="mt-2 text-meta text-content-subtle">
+              Scored the way an employer's interview is scored, which is the point of
+              practising. It is yours alone; no employer is told you took it.
+            </p>
+          {% else %}
+            <div class="flex items-baseline justify-between gap-4">
+              <p class="text-body-lg">{{ outcome.get_recommendation_display }}</p>
+              <p class="text-caption text-content-subtle tabular-nums">
+                {{ outcome.average_score }} / 5
+              </p>
+            </div>
+            {% if outcome.summary %}<p class="mt-3">{{ outcome.summary }}</p>{% endif %}
+          {% endif %}
+        </div>
+      </section>
+
+      {% if scores %}
+        <section class="stack">
+          <h2 class="stack-title">By competency</h2>
+          <ul class="mt-3 space-y-4">
+            {% for score in scores %}
+              <li>
+                <div class="flex items-baseline justify-between gap-3">
+                  <span class="text-meta">{{ score.competency_label }}</span>
+                  <span class="text-caption text-content-subtle tabular-nums">{{ score.score }} / 5</span>
+                </div>
+                {% if score.rationale %}
+                  <p class="mt-1 text-content-muted">{{ score.rationale }}</p>
+                {% endif %}
+                {% if score.grounded is False %}
+                  <p class="mt-1 text-caption text-content-subtle">
+                    Part of this reasoning quoted words you did not write, and those
+                    quotations were removed. Treat this score as rough.
+                  </p>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+    {% elif not session.is_practice %}
+      <div class="card">
+        <div class="card-body">
+          <p class="text-content-muted">
+            {{ session.application.job.company.name }} has not shared feedback from this
+            interview. Companies choose whether to; if they do, it appears here and you
+            are told.
+          </p>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if delivery_summary %}
+      {% comment %}
+        Delivery is feedback, placed after the scores and labelled as not part of
+        them. Every sentence here names the measurement it comes from.
+      {% endcomment %}
+      <section class="stack" aria-labelledby="delivery-heading">
+        <h2 class="stack-title" id="delivery-heading">How you spoke</h2>
+        <p class="text-meta text-content-muted">
+          Across {{ delivery_summary.answers }} spoken answer{{ delivery_summary.answers|pluralize }}:
+          {{ delivery_summary.speaking_seconds }} seconds of speech{% if delivery_summary.median_words_per_minute %},
+          about {{ delivery_summary.median_words_per_minute }} words a minute{% endif %},
+          {{ delivery_summary.long_pauses }} long pause{{ delivery_summary.long_pauses|pluralize }}.
+        </p>
+        <p class="text-caption text-content-subtle">
+          Measured from the timing of the words the recogniser heard. Not part of your score, not
+          shown to anyone else, and nothing about your face or appearance was analysed. The recordings
+          were deleted after transcription.
+        </p>
+      </section>
+    {% endif %}
+
+    {% if turns %}
+      <section class="stack">
+        <h2 class="stack-title">What you were asked</h2>
+        <ul class="mt-3 space-y-6">
+          {% for turn in turns %}
+            <li>
+              <p class="text-meta font-medium">{{ turn.question_text }}</p>
+              {% if turn.question_origin == "ai_followup" %}
+                <p class="text-caption text-content-subtle">Follow-up</p>
+              {% endif %}
+              <p class="mt-2 whitespace-pre-line text-content-muted">
+                {{ turn.answer_text|default:"Not answered" }}
+              </p>
+              {% if turn.delivery_notes %}
+                <ul class="mt-2 list-disc pl-5 text-caption text-content-subtle">
+                  {% for note in turn.delivery_notes %}<li>{{ note }}</li>{% endfor %}
+                </ul>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    <p class="text-caption text-content-subtle">
+      <a href="{% url 'interviews:hub' %}" class="link-editorial">Back to interviews</a>
+      {% if session.is_practice %}
+        · Practice results are yours alone. No employer can see this page.
+      {% endif %}
+    </p>
+  </div>
+{% endblock %}

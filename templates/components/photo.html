@@ -1,0 +1,24 @@
+{% load static %}{% comment %}
+A photograph, responsively sized.
+
+  {% include "components/photo.html" with photo=photos.hero sizes="100vw" priority=1 %}
+
+photo    — a record from apps/core/content.photos()
+sizes    — the CSS `sizes` attribute; default assumes a full-bleed image
+priority — truthy for the one image above the fold; everything else lazy-loads
+
+`object-position` comes from the photo record so a face is never cropped out at
+narrow widths. Decorative images are not routed through here: if a picture is
+worth loading on this site it is worth describing, so `alt` is always required.
+{% endcomment %}<img
+  {% if photo.remote %}
+    src="{{ photo.src }}"
+    srcset="{{ photo.srcset }}"
+    sizes="{{ sizes|default:'100vw' }}"
+  {% else %}
+    src="{% static photo.local %}"
+  {% endif %}
+  alt="{{ photo.alt }}"
+  style="object-position: {{ photo.position|default:'50% 50%' }}"
+  {% if priority %}fetchpriority="high" decoding="async"{% else %}loading="lazy" decoding="async"{% endif %}
+  class="{{ css_class|default:'h-full w-full object-cover' }}">

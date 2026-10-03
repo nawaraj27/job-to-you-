@@ -1,0 +1,75 @@
+{% comment %}
+One conversation's messages and the reply box, shared by both inboxes.
+
+Expects: thread, rows (apps.messaging.presentation.thread_rows), own_kind
+("candidate" or "company"), max_attachments, edit_window, reply_label.
+
+Attachment links carry a one-read token minted for this viewer; a file the
+viewer may not open, or one still being scanned, is named without a link and
+says why. Own messages get "Edit" (inside the edit window) and "Delete" behind a
+disclosure, so neither is pressed by accident.
+{% endcomment %}
+<ol class="space-y-4 py-5">
+  {% for row in rows %}
+    {% with message=row.message %}
+      <li class="flex {% if message.sender_kind == own_kind %}justify-end{% endif %}">
+        <div class="max-w-[42ch] min-w-0 rounded-lg border border-hairline p-3
+                    {% if message.sender_kind == own_kind %}bg-surface-sunken{% endif %}">
+          <p class="whitespace-pre-line break-words text-sm
+                    {% if message.is_deleted %}italic text-content-subtle{% endif %}">
+            {{ message.display_body }}
+          </p>
+          {% if row.attachments %}
+            <ul class="mt-2 space-y-1">
+              {% for file in row.attachments %}
+                <li class="text-meta break-all">
+                  {% if file.url %}
+                    <a class="underline [text-underline-offset:0.2em]" href="{{ file.url }}">
+                      {% icon "document" css_class="size-3.5" %}{{ file.filename }}
+                    </a>
+                  {% else %}
+                    {% icon "document" css_class="size-3.5" %}{{ file.filename }}
+                    <span class="text-content-subtle">— {{ file.note }}</span>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          <p class="mt-1.5 text-caption text-content-subtle">
+            {% if own_kind == "company" and message.sender %}{{ message.sender.get_full_name }} · {% endif %}
+            {{ message.created_at|date:"j M, H:i" }}
+            {% if message.edited_at %}· edited{% endif %}
+          </p>
+          {% if row.can_delete %}
+            <details class="mt-2">
+              <summary class="cursor-pointer text-caption text-content-muted">
+                {% if row.can_edit %}Edit or delete{% else %}Delete{% endif %}<span class="sr-only"> your message from {{ message.created_at|date:"j M, H:i" }}</span>
+              </summary>
+              {% if row.can_edit %}
+                <form method="post" class="mt-2 space-y-2">
+                  {% csrf_token %}
+                  <input type="hidden" name="thread" value="{{ thread.public_id }}">
+                  <input type="hidden" name="message_id" value="{{ message.pk }}">
+                  <label class="label" for="edit-{{ message.pk }}">Edit message</label>
+                  <textarea class="input" id="edit-{{ message.pk }}" name="body" rows="2" required
+                            maxlength="8000">{{ message.body }}</textarea>
+                  <p class="text-caption text-content-subtle">You can edit for {{ edit_window }} minutes after sending. The other side sees that it was edited.</p>
+                  <button class="btn btn-secondary btn-sm" type="submit" name="action" value="edit">Save edit</button>
+                </form>
+              {% endif %}
+              <form method="post" class="mt-2">
+                {% csrf_token %}
+                <input type="hidden" name="thread" value="{{ thread.public_id }}">
+                <input type="hidden" name="message_id" value="{{ message.pk }}">
+                <p class="text-caption text-content-subtle">Deleting leaves a note that a message was deleted, and withdraws its attachments.</p>
+                <button class="btn btn-quiet btn-sm mt-1" type="submit" name="action" value="delete">Delete message</button>
+              </form>
+            </details>
+          {% endif %}
+        </div>
+      </li>
+    {% endwith %}
+  {% empty %}
+    <li class="text-sm text-content-muted">Nothing said yet.</li>
+  {% endfor %}
+</ol>

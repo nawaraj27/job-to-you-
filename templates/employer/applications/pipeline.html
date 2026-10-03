@@ -1,0 +1,121 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+The company's own pipeline (FR-6.3).
+
+Stages are data, not code, which is why there is no state machine behind them.
+Two things are not configurable and the form says so: `kind` decides whether a
+stage closes an application, and a candidate is never shown a stage name the
+company marked private (FR-6.10).
+{% endcomment %}
+
+{% block title %}Pipeline - {{ company.name }}{% endblock %}
+{% block page_heading %}Pipeline{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    {% if is_default %}
+      You are using the platform default. Saving creates your own set.
+    {% else %}
+      Your own stages. Applications sitting on a stage keep it until they move.
+    {% endif %}
+  </p>
+{% endblock %}
+
+{% block page_body %}
+<form method="post" class="max-w-4xl space-y-4">
+  {% csrf_token %}
+
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-hairline text-left">
+        <th class="py-2">Key</th>
+        <th class="py-2">Name</th>
+        <th class="py-2">Kind</th>
+        <th class="py-2">Candidate sees</th>
+        <th class="py-2">Unlocks contact</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for stage in stages %}
+        <tr class="border-b border-hairline">
+          {% comment %}
+            Every control named for its row. The table header labels the
+            columns for a sighted reader only: to a screen reader these were
+            27 unlabelled inputs and 9 unnamed selects.
+          {% endcomment %}
+          <td class="py-2">
+            <input class="input" name="key" value="{{ stage.key }}" required maxlength="40"
+                   aria-label="Key for stage {{ forloop.counter }}"
+                   {% if not can_edit %}disabled{% endif %}>
+          </td>
+          <td class="py-2">
+            <input class="input" name="label" value="{{ stage.label }}" required maxlength="60"
+                   aria-label="Name for stage {{ forloop.counter }}"
+                   {% if not can_edit %}disabled{% endif %}>
+          </td>
+          <td class="py-2">
+            <select class="input" name="kind" aria-label="Kind for stage {{ forloop.counter }}"
+                    {% if not can_edit %}disabled{% endif %}>
+              {% for value, label in kinds %}
+                <option value="{{ value }}" {% if value == stage.kind %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td class="py-2">
+            <div class="flex items-center gap-2">
+              <input type="checkbox" name="is_visible_to_candidate" value="{{ stage.key }}"
+                     aria-label="Candidate sees the real name of stage {{ forloop.counter }}"
+                     {% if stage.is_visible_to_candidate %}checked{% endif %}
+                     {% if not can_edit %}disabled{% endif %}>
+              <input class="input" name="candidate_label" value="{{ stage.candidate_label }}"
+                     placeholder="Shown instead" maxlength="60"
+                     aria-label="Name the candidate sees instead, stage {{ forloop.counter }}"
+                     {% if not can_edit %}disabled{% endif %}>
+            </div>
+          </td>
+          <td class="py-2">
+            <input type="checkbox" name="reveals_contact" value="{{ stage.key }}"
+                   aria-label="Stage {{ forloop.counter }} unlocks contact details"
+                   {% if stage.reveals_contact %}checked{% endif %}
+                   {% if not can_edit %}disabled{% endif %}>
+          </td>
+        </tr>
+      {% endfor %}
+
+      {# Two blank rows, so adding a stage needs no JavaScript. #}
+      {% for _ in "12"|make_list %}
+        <tr class="border-b border-hairline">
+          <td class="py-2"><input class="input" name="key" maxlength="40" placeholder="new-stage"
+                                  aria-label="Key for new stage {{ forloop.counter }}"
+                                  {% if not can_edit %}disabled{% endif %}></td>
+          <td class="py-2"><input class="input" name="label" maxlength="60"
+                                  aria-label="Name for new stage {{ forloop.counter }}"
+                                  {% if not can_edit %}disabled{% endif %}></td>
+          <td class="py-2">
+            <select class="input" name="kind" aria-label="Kind for new stage {{ forloop.counter }}"
+                    {% if not can_edit %}disabled{% endif %}>
+              {% for value, label in kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+            </select>
+          </td>
+          <td class="py-2"><input class="input" name="candidate_label" maxlength="60"
+                                  aria-label="Name the candidate sees, new stage {{ forloop.counter }}"
+                                  {% if not can_edit %}disabled{% endif %}></td>
+          <td class="py-2"><input type="checkbox" name="reveals_contact" value=""
+                                  aria-label="New stage {{ forloop.counter }} unlocks contact details"
+                                  {% if not can_edit %}disabled{% endif %}></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="text-meta text-content-subtle">
+    A pipeline needs at least one stage of kind &ldquo;Closed&rdquo;: somewhere for an
+    application to end.
+  </p>
+
+  {% if can_edit %}
+    <button class="btn btn-primary" type="submit">Save pipeline</button>
+  {% else %}
+    <p class="text-sm text-content-subtle">Editing the pipeline needs admin access.</p>
+  {% endif %}
+</form>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "admin/change_list.html" %}
+{% comment %}
+Payment configuration at a glance (ADR-A58). States only: whether each gateway
+is switched on and complete. No key, secret or credential is ever rendered.
+{% endcomment %}
+{% block content_title %}
+  {{ block.super }}
+  <div style="margin-bottom:1em;border:1px solid var(--hairline-color);padding:0 0 8px">
+    <h2>Payments environment: {{ payments_environment|upper }}</h2>
+    <table>
+      <thead><tr><th>Gateway</th><th>Enabled</th><th>Configured</th><th>Problems</th></tr></thead>
+      <tbody>
+        {% for row in gateway_rows %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td>{{ row.enabled|yesno:"yes,no" }}</td>
+            <td>{{ row.configured|yesno:"yes,no" }}</td>
+            <td>{{ row.problems|join:" " }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

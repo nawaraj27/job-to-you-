@@ -1,0 +1,114 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Where an upload waits. Honest about the two steps it is waiting on, because
+"processing..." with no detail is where people close the tab.
+
+Two things this screen has to make true, both of which it used to get wrong:
+
+  * **Leaving is safe.** The scan and the read happen in workers off the back
+    of the outbox; this page only reads their state. Nothing here starts,
+    holds or cancels the work, so closing the tab costs nothing — and the page
+    now says so, because a page that polls and shows a spinner reads as
+    something you have to sit through.
+  * **There is a way back.** Uploads live at `resume:upload`, which is in the
+    rail, so the way out of this screen is the place the candidate will find
+    the file again later. Deleting an upload is on that screen and is a
+    separate, confirmed action: this one has no destructive control at all.
+{% endcomment %}
+
+{% block title %}Reading your CV — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Reading your CV" text="Every file is scanned for malware before anything opens it. Reading starts the moment it is cleared." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-2xl stack">
+    {% comment %}CVP-04: a way out that is plainly a way out. Close (X) and
+    "Minimize to the top bar" both leave this page for the one the candidate
+    came from — the work carries on, and the chip beside the bell follows it on
+    every page; "Continue browsing" goes to the jobs. Nothing here cancels.{% endcomment %}
+    <div class="card">
+      <div class="card-body">
+        <div class="flex items-start justify-between gap-3">
+          <p class="measure text-meta text-content-muted">
+            This carries on without you. Leave whenever you like: the top bar shows
+            where your CV has got to on every page, and you get a notification
+            when it has been read.
+          </p>
+          <a href="{{ back_url }}" class="btn btn-ghost btn-icon shrink-0"
+             aria-label="Close. Reading carries on">{% icon "close" css_class="size-5" %}</a>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <a href="{% url 'jobs:list' %}" class="btn btn-primary btn-sm">Continue browsing jobs</a>
+          <a href="{{ back_url }}" class="btn btn-secondary btn-sm">Minimize to the top bar</a>
+          <a href="{% url 'resume:upload' %}" class="btn btn-quiet btn-sm">
+            {% icon "arrow-left" css_class="size-4" %}Back to your uploads
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {% comment %}
+    The poll stops once nothing is in flight. It used to run every five
+    seconds for as long as the tab was open, including on a page where every
+    file had finished an hour ago.
+    {% endcomment %}
+    {% comment %}
+    The poll sits on a wrapper and swaps the list itself. It used to be a
+    `<ul>` holding a `<div>` holding the `<li>`s, which is not a list to a
+    screen reader (axe: list, listitem).
+    {% endcomment %}
+    {% comment %}
+    The wrapper swaps itself, so the answer that says nothing is in flight
+    also takes the poll away. It used to swap only the list inside it, and the
+    wrapper kept asking every five seconds for as long as the tab was open.
+    {% endcomment %}
+    <div id="processing" class="mt-6" {% if waiting %}hx-get="{% url 'resume:processing' %}" hx-trigger="every 2s"
+         hx-select="#processing" hx-target="this" hx-swap="outerHTML"{% endif %}>
+      <ul id="processing-list" class="space-y-4">
+        {% for upload in uploads %}
+          <li class="card">
+            <div class="card-body">
+              <p class="font-medium">{{ upload.original_filename }}</p>
+              <p class="mt-1 text-meta text-content-muted">
+                Scan: {{ upload.attachment.get_scan_status_display }} ·
+                Reading: {{ upload.get_parse_status_display }}
+              </p>
+              {% if upload.parse_status == "parsed" %}
+                <a href="{% url 'resume:upload' %}#import-proposals" class="btn btn-primary btn-sm mt-3">View results</a>
+              {% elif upload.attachment.scan_status == "pending" %}
+                <p class="mt-2 flex items-center gap-2 text-meta text-content-muted">
+                  {% icon "spinner" css_class="size-4 animate-spin" %}Step 1 of 3 · checking the file is safe
+                </p>
+              {% elif upload.attachment.scan_status != "clean" %}
+                <p class="mt-2 text-meta text-danger-fg">
+                  This file did not pass the safety check, so it was not opened.
+                </p>
+              {% elif upload.parse_status == "pending" %}
+                {% comment %}Queued, not yet picked up: said as such, not as "reading".{% endcomment %}
+                <p class="mt-2 flex items-center gap-2 text-meta text-content-muted">
+                  {% icon "spinner" css_class="size-4 animate-spin" %}Step 2 of 3 · checked, waiting to be read
+                </p>
+              {% elif upload.parse_status == "running" %}
+                <p class="mt-2 flex items-center gap-2 text-meta text-content-muted">
+                  {% icon "spinner" css_class="size-4 animate-spin" %}Step 2 of 3 · reading it
+                </p>
+              {% elif upload.parse_status == "failed" or upload.parse_status == "unsupported" %}
+                <p class="mt-2 text-meta text-danger-fg">
+                  It could not be read{% if upload.parse_error %}: {{ upload.parse_error }}{% else %}.{% endif %}
+                </p>
+              {% endif %}
+            </div>
+          </li>
+        {% empty %}
+          <li class="text-content-muted">
+            Nothing is being processed.
+            <a href="{% url 'resume:upload' %}" class="link-editorial">Your uploads</a>
+            lists every CV you have sent us.
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+{% endblock %}

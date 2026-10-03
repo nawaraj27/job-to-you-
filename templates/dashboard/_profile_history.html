@@ -1,0 +1,83 @@
+{% comment %}
+One dated list — work history or education — with its add form.
+
+  {% include "dashboard/_profile_history.html" with act=act rows=profile.experience section="experience" title="Work history" %}
+
+Both sections are the same shape: a list of roles or courses with dates, and a
+small form to add another. Two copies of this markup would drift apart the
+first time one of them gained a field.
+{% endcomment %}
+<section>
+  <div class="stack-head"><h2 class="stack-title">{{ title }}</h2></div>
+
+  <ul class="mt-4 space-y-4">
+    {% for row in rows %}
+      <li class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <p class="font-medium">{{ row.title }}</p>
+          <p class="text-meta text-content-muted">{{ row.org }}{% if row.dates %} · {{ row.dates }}{% endif %}</p>
+          {% if row.summary %}
+            <p class="mt-1 text-meta leading-relaxed text-content-muted">{{ row.summary }}</p>
+          {% endif %}
+        </div>
+        <button type="button" class="link-editorial shrink-0 text-content-subtle"
+                hx-post="{{ act }}"
+                hx-vals='{"command": "remove_entry", "section": "{{ section }}", "entry_id": "{{ row.id }}"}'
+                hx-target="#profile-body" hx-swap="outerHTML">Remove</button>
+      </li>
+    {% empty %}
+      <li class="text-content-muted">Nothing here yet.</li>
+    {% endfor %}
+  </ul>
+
+  <details class="mt-4">
+    <summary class="link-editorial cursor-pointer">Add {{ title|lower }}</summary>
+    <form class="mt-4 grid gap-4 sm:grid-cols-2"
+          hx-post="{{ act }}" hx-target="#profile-body" hx-swap="outerHTML">
+      <input type="hidden" name="command" value="add_entry">
+      <input type="hidden" name="section" value="{{ section }}">
+
+      {% if section == "experience" %}
+        <div class="field">
+          <label for="{{ section }}-title" class="label">Job title</label>
+          <input id="{{ section }}-title" name="title" class="input" required>
+        </div>
+        <div class="field">
+          <label for="{{ section }}-org" class="label">Employer</label>
+          <input id="{{ section }}-org" name="org_name" class="input" required>
+        </div>
+      {% else %}
+        <div class="field">
+          <label for="{{ section }}-institution" class="label">Institution</label>
+          <input id="{{ section }}-institution" name="institution" class="input" required>
+        </div>
+        <div class="field">
+          <label for="{{ section }}-qualification" class="label">Qualification</label>
+          <input id="{{ section }}-qualification" name="qualification" class="input">
+        </div>
+      {% endif %}
+
+      <div class="field">
+        <label for="{{ section }}-start" class="label">Started</label>
+        <input id="{{ section }}-start" name="start_date" type="date" class="input"
+               {% if section == "experience" %}required{% endif %}>
+      </div>
+      <div class="field">
+        <label for="{{ section }}-end" class="label">Ended</label>
+        <input id="{{ section }}-end" name="end_date" type="date" class="input">
+        <p class="hint">Leave empty and tick below if this is current.</p>
+      </div>
+      <label class="flex items-center gap-2 sm:col-span-2">
+        <input type="checkbox" name="is_current" class="size-4 accent-brand-600">
+        <span class="text-meta">This is current</span>
+      </label>
+      <div class="field sm:col-span-2">
+        <label for="{{ section }}-summary" class="label">What you did</label>
+        <textarea id="{{ section }}-summary" name="summary" rows="3" class="input"></textarea>
+      </div>
+      <div class="sm:col-span-2">
+        <button type="submit" class="btn btn-secondary btn-sm">Add</button>
+      </div>
+    </form>
+  </details>
+</section>

@@ -1,0 +1,33 @@
+{% comment %}
+Follow a company (FOL-01). The relationship is stored server-side; this is only
+its switch. Named actions rather than a toggle, so a double click cannot undo
+itself, and `aria-pressed` so the state is announced rather than only drawn.
+
+Signed out, the control is a sign-in link that returns here.
+{% endcomment %}
+<div id="follow-control" class="flex flex-wrap items-center gap-3">
+  {% if user.is_authenticated %}
+    <form hx-post="{% url 'jobs:company_follow' slug=follow_slug %}" hx-target="#follow-control" hx-swap="outerHTML"
+          method="post" action="{% url 'jobs:company_follow' slug=follow_slug %}">
+      {% csrf_token %}
+      {% if is_following %}
+        <input type="hidden" name="action" value="unfollow">
+        <button type="submit" class="btn btn-secondary btn-sm" aria-pressed="true">
+          {% icon "check" css_class="size-4" %}Following<span class="sr-only"> {{ company_name }}. Press to unfollow.</span>
+        </button>
+      {% else %}
+        <input type="hidden" name="action" value="follow">
+        <button type="submit" class="btn btn-primary btn-sm" aria-pressed="false">
+          {% icon "plus" css_class="size-4" %}Follow company<span class="sr-only"> {{ company_name }}</span>
+        </button>
+      {% endif %}
+    </form>
+    <p class="text-meta text-content-muted" {% if follow_message %}data-announce="{{ follow_message }}"{% endif %}>
+      {% if follow_message %}{{ follow_message }}{% elif is_following %}You will hear when {{ company_name }} posts a job, is verified, or shares news or an event.{% else %}Hear when {{ company_name }} posts a job, is verified, or shares news or an event.{% endif %}
+    </p>
+  {% else %}
+    <a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}" class="btn btn-secondary btn-sm">
+      {% icon "plus" css_class="size-4" %}Sign in to follow
+    </a>
+  {% endif %}
+</div>

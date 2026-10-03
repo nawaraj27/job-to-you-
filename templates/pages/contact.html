@@ -1,0 +1,36 @@
+{% extends "layouts/page.html" %}
+
+{% block title %}Contact — {{ site.name }}{% endblock %}
+{% block page_heading %}Get in touch{% endblock %}
+
+{% block page_body %}
+  <div class="grid gap-5 md:grid-cols-2 lg:max-w-3xl">
+    <article class="card card-body">
+      <span class="grid size-10 place-items-center rounded-lg border border-hairline text-content-muted">
+        {% icon "mail" css_class="size-5" %}
+      </span>
+      <h2 class="mt-4 text-base font-semibold">Support</h2>
+      <p class="mt-2 text-sm leading-relaxed text-content-muted">
+        Something broken, or a question about your account.
+      </p>
+      <a href="mailto:{{ site.support_email }}"
+         class="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent-content hover:underline">
+        {{ site.support_email }}{% icon "arrow-up-right" css_class="size-4" %}
+      </a>
+    </article>
+
+    <article class="card card-body">
+      <span class="grid size-10 place-items-center rounded-lg border border-hairline text-content-muted">
+        {% icon "building" css_class="size-5" %}
+      </span>
+      <h2 class="mt-4 text-base font-semibold">Employers</h2>
+      <p class="mt-2 text-sm leading-relaxed text-content-muted">
+        Hiring, pricing for teams, or verification of your company account.
+      </p>
+      <a href="mailto:{{ site.support_email }}?subject=Employer%20enquiry"
+         class="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent-content hover:underline">
+        Email the team{% icon "arrow-up-right" css_class="size-4" %}
+      </a>
+    </article>
+  </div>
+{% endblock %}

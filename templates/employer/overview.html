@@ -1,0 +1,191 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+The recruiter's home.
+
+Opens with what is waiting on them, because that is the question they came
+with. The setup cards — profile, verification, team — are below it, where
+something you do once belongs.
+
+This screen used to be the four setup cards and a line reading "applicants and
+hiring analytics arrive in a later release", written when that was true. The
+applicant board, the pipeline, talent search, interviews, messages and
+analytics have all been built since; the sentence outlived them by several
+releases, and the rail beside this page now goes to every one of them.
+{% endcomment %}
+
+{% block title %}{{ company.name }} — {{ site.name }}{% endblock %}
+{% block page_heading %}{{ company.name }}{% endblock %}
+{% block page_intro %}
+  <p class="mt-1 text-content-muted">
+    Signed in as {{ membership.get_role_display|lower }}.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+
+  {# --- The numbers, as one line rather than four tiles ---------------- #}
+  <section>
+    <dl class="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+      <div>
+        <dt class="overline">Live postings</dt>
+        <dd class="mt-1 text-2xl tabular-nums">{{ job_counts.published }}</dd>
+      </div>
+      <div>
+        <dt class="overline">Open applications</dt>
+        <dd class="mt-1 text-2xl tabular-nums">{{ application_counts.live }}</dd>
+      </div>
+      <div>
+        <dt class="overline">Not yet looked at</dt>
+        <dd class="mt-1 text-2xl tabular-nums">{{ application_counts.new }}</dd>
+      </div>
+      <div>
+        <dt class="overline">Interviewing</dt>
+        <dd class="mt-1 text-2xl tabular-nums">{{ application_counts.interviewing }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  {# --- Waiting on you ------------------------------------------------- #}
+  {% if new_applicants %}
+    <section class="mt-12">
+      <div class="stack-head">
+        <h2 class="stack-title">Waiting on you</h2>
+        <a href="{% url 'employer:applicants' company.slug %}" class="link-editorial">
+          All applicants
+        </a>
+      </div>
+      <ul class="mt-3 divide-y divide-hairline">
+        {% for application in new_applicants %}
+          <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div class="min-w-0">
+              {% if can_open_detail %}
+              <a href="{% url 'employer:application_detail' company.slug application.public_id %}"
+                 class="text-meta hover:underline [text-underline-offset:0.2em]">
+                {{ application.candidate.user.full_name|default:"A candidate" }}
+              </a>
+              {% else %}
+              <p class="text-meta">{{ application.candidate.user.full_name|default:"A candidate" }}</p>
+              {% endif %}
+              <p class="text-caption text-content-subtle">
+                {{ application.job.title }} · applied {{ application.applied_at|timesince }} ago
+              </p>
+            </div>
+            {% if can_open_detail %}
+            <a href="{% url 'employer:application_detail' company.slug application.public_id %}"
+               class="btn btn-secondary btn-sm shrink-0">Review<span class="sr-only"> {{ application.candidate.user.full_name }}</span></a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if upcoming_interviews %}
+    <section class="mt-12">
+      <div class="stack-head">
+        <h2 class="stack-title">Interviews coming up</h2>
+        <a href="{% url 'employer:interviews' company.slug %}" class="link-editorial">
+          All interviews
+        </a>
+      </div>
+      <ul class="mt-3 divide-y divide-hairline">
+        {% for session in upcoming_interviews %}
+          <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div class="min-w-0">
+              <p class="text-meta">{{ session.scheduled_at|date:"D j M, H:i" }}</p>
+              <p class="text-caption text-content-subtle">
+                {{ session.candidate.user.full_name|default:"A candidate" }}
+                {% if session.application %}· {{ session.application.job.title }}{% endif %}
+              </p>
+            </div>
+            <a href="{% url 'employer:interview_detail' company.slug session.public_id %}"
+               class="btn btn-secondary btn-sm shrink-0">Open</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if draft_jobs %}
+    <section class="mt-12">
+      <div class="stack-head">
+        <h2 class="stack-title">Not published yet</h2>
+      </div>
+      <ul class="mt-3 divide-y divide-hairline">
+        {% for job in draft_jobs %}
+          <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div class="min-w-0">
+              <p class="text-meta">{{ job.title }}</p>
+              <p class="text-caption text-content-subtle">
+                Edited {{ job.updated_at|timesince }} ago · nobody can see it
+              </p>
+            </div>
+            <a href="{% url 'employer:job_detail' company.slug job.public_id %}"
+               class="btn btn-secondary btn-sm shrink-0">Finish it</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if not new_applicants and not upcoming_interviews and not draft_jobs %}
+    <section class="mt-12">
+      {% if job_counts.published %}
+        {% include "components/empty_state.html" with icon="check-circle" title="Nothing waiting on you" text="Every applicant has been looked at and no interview is booked. The applicant board has the rest." %}
+      {% else %}
+        {% include "components/empty_state.html" with icon="briefcase" title="No live postings yet" text="Post a role and applicants appear here as they arrive." %}
+      {% endif %}
+      <div class="mt-4 flex flex-wrap gap-2">
+        {% if can_create_jobs %}
+          <a class="btn btn-primary" href="{% url 'employer:job_create' company.slug %}">Post a job</a>
+        {% endif %}
+        <a class="btn btn-secondary" href="{% url 'employer:applicants' company.slug %}">Applicants</a>
+      </div>
+    </section>
+  {% endif %}
+
+  {# --- Setting up, which is done once -------------------------------- #}
+  {% if can_open_company or can_open_team %}
+  <section class="mt-14">
+    <div class="stack-head"><h2 class="stack-title">Your company</h2></div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="card p-5">
+        <h3 class="font-medium">Company profile</h3>
+        <p class="mt-2 text-sm text-content-muted">What candidates read about you.</p>
+        {% if can_open_company %}
+        <a class="btn btn-quiet mt-3" href="{% url 'employer:profile' company.slug %}">{% if can_edit_company %}Edit profile{% else %}View profile{% endif %}</a>
+        {% endif %}
+      </div>
+
+      <div class="card p-5">
+        <h3 class="font-medium">Verification</h3>
+        <p class="mt-2 text-sm text-content-muted">{{ company.get_verification_state_display }}</p>
+        {% if company.verification_state != "verified" %}
+          {% comment %}ERR-02: guidance rather than a status word. Only what
+          verification actually does is listed — posting, candidate search and
+          interviews do not depend on it here, so they are not promised.{% endcomment %}
+          <p class="mt-2 text-sm">Verify your company to get:</p>
+          <ul class="mt-1 space-y-1 text-sm text-content-muted">
+            <li class="flex gap-2"><span class="text-success-fg">{% icon "check" css_class="size-4" %}</span>A “Verified employer” badge on your page and every posting</li>
+            <li class="flex gap-2"><span class="text-success-fg">{% icon "check" css_class="size-4" %}</span>Your followers told that you are verified</li>
+            <li class="flex gap-2"><span class="text-success-fg">{% icon "check" css_class="size-4" %}</span>Candidates who can see who they are applying to</li>
+          </ul>
+        {% endif %}
+        {% if can_open_company %}
+        <a class="btn {% if company.verification_state == 'not_submitted' %}btn-primary{% else %}btn-quiet{% endif %} mt-3" href="{% url 'employer:verification' company.slug %}">{% if company.verification_state == "not_submitted" %}Start verification{% else %}Open verification{% endif %}</a>
+        {% endif %}
+      </div>
+
+      <div class="card p-5">
+        <h3 class="font-medium">Team</h3>
+        <p class="mt-2 text-sm text-content-muted">{{ team_count }} member{{ team_count|pluralize }}.</p>
+        {% if can_open_team %}
+        <a class="btn btn-quiet mt-3" href="{% url 'employer:team' company.slug %}">
+          {% if can_manage_team %}Manage team{% else %}View team{% endif %}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+{% endblock %}

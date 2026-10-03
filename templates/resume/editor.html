@@ -1,0 +1,19 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+The editor: the whole document, section by section, with a live preview.
+
+The body is one swap region because almost every edit moves the preview, the
+save status and the suggestion list together — swapping them separately lets
+them disagree about the same document.
+{% endcomment %}
+
+{% block title %}{{ document.name }} — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title=document.name text="Changes save as you make them. A saved version is a separate, permanent snapshot." %}
+{% endblock %}
+
+{% block app_body %}
+  {% include "resume/_example_notice.html" %}
+  {% include "resume/_editor_live.html" %}
+{% endblock %}

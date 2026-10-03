@@ -1,0 +1,63 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Invitation acceptance. The invited address is shown beside the address currently
+signed in, because a mismatch is the common case - people forward invitations -
+and silently joining the wrong account creates a membership nobody in the
+company can account for (SRS 2.6).
+
+Decision D-03: there is no "join with this account instead". The account
+accepts when its main address or a verified secondary address is the invited
+one (`address_matches`, the same rule the POST enforces); otherwise the person
+signs in as the invited address or asks for the invitation again.
+{% endcomment %}
+
+{% block title %}Join {{ invite.company.name }} - {{ site.name }}{% endblock %}
+{% block page_heading %}Join {{ invite.company.name }}{% endblock %}
+
+{% block page_body %}
+  {% if invite.is_open %}
+    <div class="card max-w-xl space-y-4 p-6">
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between gap-4">
+          <dt class="text-content-subtle">Invitation sent to</dt>
+          <dd class="min-w-0 break-all text-right font-medium">{{ invite.email }}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-content-subtle">You are signed in as</dt>
+          <dd class="min-w-0 break-all text-right font-medium">{{ signed_in_as }}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-content-subtle">Role</dt>
+          <dd class="font-medium">{{ invite.get_role_display }}</dd>
+        </div>
+      </dl>
+
+      {% if not address_matches %}
+        <div class="alert alert-warning space-y-2 break-words">
+          <p>
+            This invitation was sent to a different address,
+            <span class="break-all">{{ invite.email }}</span>, not to the account you are signed in to.
+          </p>
+          <p>
+            Sign out and sign in as <span class="break-all">{{ invite.email }}</span> to accept it,
+            or ask the person who invited you to send the invitation again to the address you use.
+          </p>
+        </div>
+        <form method="post" action="{% url 'accounts:logout' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{% url 'accounts:login' %}?next={{ request.path|urlencode }}">
+          <button class="btn btn-secondary" type="submit">Sign out</button>
+        </form>
+      {% else %}
+        <form method="post">
+          {% csrf_token %}
+          <button class="btn btn-primary" type="submit">Accept invitation</button>
+        </form>
+      {% endif %}
+    </div>
+  {% else %}
+    <p class="text-content-muted">
+      This invitation is no longer valid. It has expired, been withdrawn, or already been used - ask for a new one.
+    </p>
+  {% endif %}
+{% endblock %}

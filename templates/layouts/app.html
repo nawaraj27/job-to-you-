@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% comment %}
+The signed-in shell: a rail of the current product's sections, and the work.
+
+Two products share this layout — candidate and employer — but never the same
+rail. `rail_nav` is resolved per role in apps/core/navigation.py, so an
+employer screen contains no candidate branches.
+
+On phones the rail becomes a horizontally scrollable strip of the same links
+pinned under the header. That is a different component doing the same job, not
+the desktop rail folded up: a 15rem column of grouped links is unusable at
+375px, and burying app sections behind the hamburger costs a tap on every
+navigation in the product people use most.
+
+Blocks:
+  app_head  — title band (usually components/app_head.html)
+  app_body  — the screen
+  app_full  — bypass both, for screens that manage their own chrome
+{% endcomment %}
+
+{% block body_class %}bg-canvas{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+
+  {# --- Rail (lg and up) --- #}
+  <nav class="app-rail" aria-label="{{ rail_role|capfirst }} sections">
+    {% for group in rail_nav %}
+      <div class="{% if not forloop.first %}mt-6{% endif %}">
+        {% if group.title %}<p class="rail-label mb-1.5">{{ group.title }}</p>{% endif %}
+        <ul class="space-y-0.5">
+          {% for link in group.links %}
+            <li>
+              <a href="{{ link.url }}" class="rail-link"
+                 {% if request.path == link.url %}aria-current="page"{% endif %}>
+                {% if link.icon %}
+                  <span class="shrink-0 text-content-subtle">{% icon link.icon css_class="size-4.5" %}</span>
+                {% endif %}
+                <span class="truncate">{{ link.label }}</span>
+                {% with count=rail_counts|lookup:link.url_name %}
+                  {% if count %}<span class="rail-count tabular-nums">{{ count }}</span>{% endif %}
+                {% endwith %}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+
+    {% if rail_footer_url %}
+      <div class="mt-6 border-t border-hairline pt-4">
+        <a href="{{ rail_footer_url }}" class="rail-link">
+          {% icon rail_footer_icon|default:"plus" css_class="size-4.5 shrink-0 text-content-subtle" %}
+          <span>{{ rail_footer_label }}</span>
+        </a>
+      </div>
+    {% endif %}
+  </nav>
+
+  {# --- Work area --- #}
+  <div class="min-w-0">
+
+    {# Mobile section strip: the rail's links, flattened, scrollable, sticky. #}
+    <div class="sticky top-16 z-30 border-b border-hairline bg-canvas lg:hidden">
+      <nav class="container-page" aria-label="{{ rail_role|capfirst }} sections">
+        <div class="tabs border-0">
+          {% for group in rail_nav %}
+            {% for link in group.links %}
+              <a href="{{ link.url }}" class="tab"
+                 {% if request.path == link.url %}aria-current="page"{% endif %}>{{ link.label }}</a>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      </nav>
+    </div>
+
+    {% block app_full %}
+      <div class="container-page">
+        {% block app_head %}{% endblock %}
+      </div>
+      <div class="container-page py-8 md:py-10">
+        {% block app_body %}{% endblock %}
+      </div>
+    {% endblock %}
+  </div>
+</div>
+{% endblock %}
+
+{% block footer %}{% endblock %}

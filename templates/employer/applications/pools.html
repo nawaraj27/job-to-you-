@@ -1,0 +1,89 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+Talent pools (FR-6.9).
+
+A pool is how a company keeps track of somebody they liked but did not hire.
+Adding a person grants visibility on the `pool` basis and removing them revokes
+it — the page says so, because being saved by a company is a thing a candidate
+is entitled to understand.
+{% endcomment %}
+
+{% block title %}Talent pools - {{ company.name }}{% endblock %}
+{% block page_heading %}Talent pools{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    People worth remembering. Being in a pool is what lets you open their profile later.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <div class="grid gap-8 lg:grid-cols-[18rem_1fr]">
+    <aside>
+      <ul class="divide-y divide-hairline">
+        {% for item in pools %}
+          <li class="flex items-center justify-between gap-2 py-2.5">
+            <a class="{% if pool and pool.pk == item.pk %}font-semibold{% endif %} hover:underline"
+               href="?pool={{ item.pk }}">{{ item.name }}</a>
+            <span class="text-meta tabular-nums text-content-muted">{{ item.member_count }}</span>
+          </li>
+        {% empty %}
+          <li class="py-3 text-sm text-content-subtle">No pools yet.</li>
+        {% endfor %}
+      </ul>
+
+      <form method="post" class="mt-5 space-y-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        <label class="label" for="pool-name">New pool</label>
+        <input class="input" id="pool-name" name="name" required maxlength="80"
+               placeholder="Backend, 2026">
+        <input class="input" name="description" maxlength="200" placeholder="Why this pool exists">
+        <button class="btn btn-secondary w-full" type="submit">Create</button>
+      </form>
+    </aside>
+
+    <div class="min-w-0">
+      {% if pool %}
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 class="text-lg font-semibold">{{ pool.name }}</h2>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="pool_id" value="{{ pool.pk }}">
+            <button class="btn btn-quiet btn-sm" type="submit">Delete pool</button>
+          </form>
+        </div>
+        {% if pool.description %}
+          <p class="mt-1 text-sm text-content-muted">{{ pool.description }}</p>
+        {% endif %}
+
+        <ul class="mt-4 divide-y divide-hairline">
+          {% for member in members %}
+            <li class="flex items-center justify-between gap-3 py-2.5">
+              <div class="min-w-0">
+                <p class="font-medium">{{ member.candidate.user.get_full_name|default:"Candidate" }}</p>
+                <p class="text-meta text-content-muted">
+                  Added {{ member.created_at|date:"j M Y" }}
+                  {% if member.added_by %}by {{ member.added_by.get_full_name }}{% endif %}
+                </p>
+              </div>
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="remove">
+                <input type="hidden" name="pool_id" value="{{ pool.pk }}">
+                <input type="hidden" name="candidate" value="{{ member.candidate.public_id }}">
+                <button class="btn btn-quiet btn-sm" type="submit">Remove</button>
+              </form>
+            </li>
+          {% empty %}
+            <li class="py-3 text-sm text-content-subtle">
+              Nobody in this pool yet. Add people from an application.
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-content-muted">Choose a pool, or create one.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

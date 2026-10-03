@@ -1,0 +1,42 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+The cover letter library (P14).
+
+Letters live here rather than only on the apply form, because a letter is
+reused: the second application to a similar role starts from the first letter,
+and a textarea on a page reached once per job is where that gets lost.
+
+Drafting is a POST. It calls a model and creates a row, and a GET a refresh
+repeats would spend somebody's budget twice for one click.
+{% endcomment %}
+
+{% block title %}Cover letters — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Cover letters" text="Write them, keep them, reuse them. Nothing here is sent until you attach it to an application." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl stack">
+
+    <form method="post" action="{% url 'letters:act' %}" class="card">
+      {% csrf_token %}
+      <input type="hidden" name="command" value="create">
+      <div class="card-body flex flex-wrap items-end gap-3">
+        <div class="min-w-0 flex-1">
+          <label class="label" for="new-title">Start a new letter</label>
+          <input class="input" id="new-title" name="title" type="text"
+                 placeholder="For the backend role at Nexa">
+        </div>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </div>
+    </form>
+
+    <p class="text-caption text-content-subtle">
+      To have a first draft written for you, open a job and use “Draft a letter”
+      there, because a draft needs to know which role it is for.
+    </p>
+
+    {% include "letters/_list_rows.html" %}
+  </div>
+{% endblock %}

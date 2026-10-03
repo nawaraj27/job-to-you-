@@ -1,0 +1,328 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+One posting's control room.
+
+The lifecycle buttons are drawn from what the state machine will actually
+accept for this actor (`next_states`), not from a fixed list with `{% if %}`
+guards around it. A screen that offers a button the server would refuse is a
+screen that teaches people not to trust it — and keeping the two lists in sync
+by hand is exactly the drift a state machine exists to prevent.
+
+Skills, questions and the team each post to their own endpoint, so one bad
+value never costs the whole page.
+{% endcomment %}
+
+{% block title %}{{ job.title }} - {{ company.name }}{% endblock %}
+{% block page_heading %}{{ job.title }}{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    {{ job.get_status_display }}
+    {% if job.published_at %} · published {{ job.published_at|date:"j M Y" }}{% endif %}
+    · {{ job.views_count }} view{{ job.views_count|pluralize }}
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <div class="grid gap-8 lg:grid-cols-[1fr_18rem]">
+    <div class="min-w-0 space-y-8">
+
+      {# --- Skills ---------------------------------------------------- #}
+      <section>
+        <h2 class="text-lg font-semibold">Skills</h2>
+        <p class="mt-1 text-sm text-content-muted">
+          Resolved through the shared taxonomy, never stored as free text, so the matcher
+          compares this list against a candidate's, and two spellings of one skill make
+          that comparison silently wrong.
+        </p>
+
+        <ul class="mt-4 divide-y divide-hairline">
+          {% for link in job.skills.all %}
+            <li class="flex items-center gap-3 py-2.5">
+              <span class="grow">{{ link.skill.name }}</span>
+              <span class="text-meta text-content-muted">
+                {{ link.get_requirement_display }}{% if link.min_years %} · {{ link.min_years }}y+{% endif %}
+              </span>
+              {% if can_write %}
+                <form method="post" action="{% url 'employer:job_skills' company.slug job.public_id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="remove">
+                  <input type="hidden" name="skill_id" value="{{ link.skill_id }}">
+                  <button class="btn btn-quiet btn-sm" type="submit"
+                          aria-label="Remove {{ link.skill.name }}">Remove</button>
+                </form>
+              {% endif %}
+            </li>
+          {% empty %}
+            <li class="py-3 text-sm text-content-muted">No skills listed yet.</li>
+          {% endfor %}
+        </ul>
+
+        {% comment %}
+          Said on the posting itself, not only in a flash on the way past.
+
+          A live job with no skills is scored on location, level and pay alone,
+          so the people it was written for never see it — and the only sign of
+          that was a number on a list saying "0 skills".
+        {% endcomment %}
+        {% if not job.skills.all and job.status == "published" %}
+          <p class="mt-3 flex gap-2 text-meta text-danger-fg">
+            {% icon "warning" css_class="mt-0.5 size-4 shrink-0" %}
+            <span class="measure">
+              This posting is live and cannot be matched to anybody on skills.
+              Candidates are being scored on location, level and pay alone, and
+              the ones you are looking for are not seeing it.
+            </span>
+          </p>
+        {% endif %}
+
+        {% if can_write %}
+          <form method="post" action="{% url 'employer:job_skills' company.slug job.public_id %}"
+                class="mt-4 flex flex-wrap items-end gap-3">
+            {% csrf_token %}
+            <div class="grow">
+              <label class="label" for="skill-text">Add a skill</label>
+              <input class="input" id="skill-text" name="text" required autocomplete="off"
+                     placeholder="Python, PostgreSQL, Figma">
+            </div>
+            <div>
+              <label class="label" for="skill-requirement">Requirement</label>
+              <select class="input" id="skill-requirement" name="requirement">
+                {% for value, label in requirements %}
+                  <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="label" for="skill-years">Years</label>
+              <input class="input w-24" id="skill-years" name="min_years" inputmode="decimal">
+            </div>
+            <button class="btn btn-secondary" type="submit">Add<span class="sr-only"> skill</span></button>
+          </form>
+        {% endif %}
+      </section>
+
+      {# --- Screening questions --------------------------------------- #}
+      <section>
+        <h2 class="text-lg font-semibold">Screening questions</h2>
+        <p class="mt-1 text-sm text-content-muted">
+          Asked of every applicant. Stored now; answers arrive with applications.
+        </p>
+
+        <ol class="mt-4 divide-y divide-hairline">
+          {% for question in job.questions.all %}
+            <li class="flex items-start gap-3 py-2.5">
+              <span class="grow">
+                {{ question.text }}
+                <span class="block text-meta text-content-muted">
+                  {{ question.get_kind_display }}{% if question.is_required %} · required{% endif %}
+                </span>
+              </span>
+              {% if can_write %}
+                <form method="post" action="{% url 'employer:job_questions' company.slug job.public_id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="remove">
+                  <input type="hidden" name="question_id" value="{{ question.pk }}">
+                  <button class="btn btn-quiet btn-sm" type="submit">Remove</button>
+                </form>
+              {% endif %}
+            </li>
+          {% empty %}
+            <li class="py-3 text-sm text-content-muted">No questions. Every applicant just applies.</li>
+          {% endfor %}
+        </ol>
+
+        {% if can_write %}
+          <form method="post" action="{% url 'employer:job_questions' company.slug job.public_id %}"
+                class="mt-4 space-y-3">
+            {% csrf_token %}
+            <div class="flex flex-wrap items-end gap-3">
+              <div class="grow">
+                <label class="label" for="question-text">Question</label>
+                <input class="input" id="question-text" name="text" required maxlength="300">
+              </div>
+              <div>
+                <label class="label" for="question-kind">Answer</label>
+                <select class="input" id="question-kind" name="kind">
+                  {% for value, label in question_kinds %}
+                    <option value="{{ value }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <label class="flex items-center gap-2 pb-2 text-sm">
+                <input type="checkbox" name="is_required" checked> Required
+              </label>
+              <button class="btn btn-secondary" type="submit">Add<span class="sr-only"> question</span></button>
+            </div>
+            <div>
+              <label class="label" for="question-options">Choices, one per line</label>
+              <textarea class="input" id="question-options" name="options" rows="3"
+                        placeholder="Only for the two choice types."></textarea>
+            </div>
+          </form>
+        {% endif %}
+      </section>
+
+      {# --- Hiring team ----------------------------------------------- #}
+      <section>
+        <h2 class="text-lg font-semibold">Who owns this posting</h2>
+        <p class="mt-1 text-sm text-content-muted">
+          Assignment is not decoration: it is what lets a recruiter or hiring manager
+          without company-wide access edit this job and see its applicants. Owners and
+          company admins change it.
+        </p>
+
+        <ul class="mt-4 divide-y divide-hairline">
+          {% for assignment in job.assignments.all %}
+            <li class="flex items-center gap-3 py-2.5">
+              <span class="grow">{{ assignment.membership.user.get_full_name }}</span>
+              <span class="text-meta text-content-muted">{{ assignment.get_kind_display }}</span>
+              {% if can_manage_assignments %}
+                <form method="post" action="{% url 'employer:job_team' company.slug job.public_id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="unassign">
+                  <input type="hidden" name="membership_id" value="{{ assignment.membership_id }}">
+                  <input type="hidden" name="kind" value="{{ assignment.kind }}">
+                  <button class="btn btn-quiet btn-sm" type="submit">Remove</button>
+                </form>
+              {% endif %}
+            </li>
+          {% empty %}
+            <li class="py-3 text-sm text-content-muted">
+              Nobody assigned. Only members with company-wide job access can edit it.
+            </li>
+          {% endfor %}
+        </ul>
+
+        {% if can_manage_assignments %}
+          <form method="post" action="{% url 'employer:job_team' company.slug job.public_id %}"
+                class="mt-4 flex flex-wrap items-end gap-3">
+            {% csrf_token %}
+            <div class="grow">
+              <label class="label" for="assign-member">Assign</label>
+              <select class="input" id="assign-member" name="membership_id">
+                {% for member in team %}
+                  <option value="{{ member.pk }}">{{ member.user.get_full_name }} ({{ member.get_role_display }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="label" for="assign-kind">As</label>
+              <select class="input" id="assign-kind" name="kind">
+                <option value="recruiter">Recruiter</option>
+                <option value="hiring_manager">Hiring manager</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary" type="submit">Assign</button>
+          </form>
+        {% endif %}
+      </section>
+    </div>
+
+    {# --- Actions ---------------------------------------------------- #}
+    <aside class="space-y-4">
+      <div class="card p-5">
+        <h2 class="font-medium">This posting</h2>
+        <p class="mt-2 text-sm text-content-muted">{{ job.get_status_display }}</p>
+
+        {% if can_write %}
+          <a class="btn btn-quiet mt-3 w-full"
+             href="{% url 'employer:job_edit' company.slug job.public_id %}">Edit details</a>
+
+          {% comment %}
+            One form per action rather than one form with a select: each is a
+            different decision, two of them ask for a reason, and the state
+            machine refuses any that this posting cannot make anyway.
+          {% endcomment %}
+          {% if job.status == "paused" and "published" in next_states %}
+            <form method="post" action="{% url 'employer:job_act' company.slug job.public_id %}" class="mt-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="resume">
+              <input type="hidden" name="row_version" value="{{ job.row_version }}">
+              <button class="btn btn-primary w-full" type="submit">Resume posting</button>
+            </form>
+          {% elif "published" in next_states %}
+            <form method="post" action="{% url 'employer:job_act' company.slug job.public_id %}" class="mt-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="publish">
+              <input type="hidden" name="row_version" value="{{ job.row_version }}">
+              <button class="btn btn-primary w-full" type="submit">
+                {% if job.status == "draft" %}Publish{% else %}Publish again{% endif %}
+              </button>
+            </form>
+          {% endif %}
+
+          {% if "paused" in next_states %}
+            <form method="post" action="{% url 'employer:job_act' company.slug job.public_id %}" class="mt-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="pause">
+              <input type="hidden" name="row_version" value="{{ job.row_version }}">
+              <button class="btn btn-secondary w-full" type="submit">Pause posting</button>
+              <p class="mt-1 text-meta text-content-subtle">Off the site until you resume it. Applicants so far are unaffected.</p>
+            </form>
+          {% endif %}
+
+          {% if "draft" in next_states and job.status == "published" %}
+            <form method="post" action="{% url 'employer:job_act' company.slug job.public_id %}" class="mt-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="unpublish">
+              <input type="hidden" name="row_version" value="{{ job.row_version }}">
+              <button class="btn btn-quiet w-full" type="submit">Back to draft</button>
+            </form>
+          {% endif %}
+
+          {% if "closed" in next_states %}
+            <form method="post" action="{% url 'employer:job_act' company.slug job.public_id %}" class="mt-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="close">
+              <input type="hidden" name="row_version" value="{{ job.row_version }}">
+              <label class="label mt-2" for="close-reason">Why it closed</label>
+              <input class="input" id="close-reason" name="reason" maxlength="200"
+                     placeholder="Filled, or cancelled">
+              <button class="btn btn-secondary mt-2 w-full" type="submit">Close posting</button>
+            </form>
+          {% endif %}
+
+          {% if "archived" in next_states %}
+            <form method="post" action="{% url 'employer:job_act' company.slug job.public_id %}" class="mt-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="archive">
+              <input type="hidden" name="row_version" value="{{ job.row_version }}">
+              <button class="btn btn-quiet w-full" type="submit">Archive</button>
+            </form>
+          {% endif %}
+
+          {% if job.status == "archived" %}
+            <form method="post" action="{% url 'employer:job_act' company.slug job.public_id %}" class="mt-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="restore">
+              <input type="hidden" name="row_version" value="{{ job.row_version }}">
+              <button class="btn btn-quiet w-full" type="submit">Restore as draft</button>
+            </form>
+          {% endif %}
+
+          <form method="post" action="{% url 'employer:job_act' company.slug job.public_id %}" class="mt-2">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="clone">
+            <button class="btn btn-quiet w-full" type="submit">Duplicate as draft</button>
+          </form>
+        {% else %}
+          <p class="mt-3 text-sm text-content-subtle">
+            You can read this posting. Editing needs company-wide job access, or an
+            assignment on this one.
+          </p>
+        {% endif %}
+      </div>
+
+      <div class="card p-5">
+        <h2 class="font-medium">On the site</h2>
+        {% if job.status == "published" %}
+          <a class="btn btn-quiet mt-3 w-full" href="{{ job.get_absolute_url }}">View public listing</a>
+        {% else %}
+          <p class="mt-2 text-sm text-content-muted">
+            Not visible to candidates. Only published postings appear in search.
+          </p>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+{% endblock %}

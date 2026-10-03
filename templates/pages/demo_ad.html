@@ -1,0 +1,32 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Where a demo ad's "Learn more" leads (`core.ads`). Says, plainly, that the ad
+was a demonstration: there is no advertiser, no offer and no partner.
+{% endcomment %}
+
+{% block title %}Demo advertisement — {{ site.name }}{% endblock %}
+{% block page_heading %}This was a demo advertisement{% endblock %}
+{% block page_intro %}
+  <p class="mt-4 max-w-2xl text-body-lg leading-relaxed text-content-muted">
+    “{{ ad.advertiser }}” is fictional. It exists to show how a sponsored slot would sit in
+    {{ site.name }}. Nothing is on sale, and no company is involved.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <div class="prose-page">
+    <p>
+      If {{ site.name }} shows sponsored content in future, it will look like this: a clearly
+      labelled block in a few fixed places, kept out of the middle of anything you are doing:
+      never during an interview, in the CV editor, while signing in or at checkout.
+    </p>
+    <p>
+      Demo ads use no tracking: no advertising cookies, no pixels, no profile of you. Hiding one
+      only remembers, for this browser session, that you hid it.
+    </p>
+  </div>
+  <p class="mt-8 flex flex-wrap gap-3">
+    <a href="{% url 'jobs:list' %}" class="btn btn-primary">Browse jobs</a>
+    <a href="{% url 'core:home' %}" class="btn btn-secondary">Home</a>
+  </p>
+{% endblock %}

@@ -1,0 +1,130 @@
+# CI (SRS §17.3).
+#
+# The gate order is deliberate: cheap checks first, so a formatting mistake
+# fails in seconds rather than after the whole suite has run.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DJANGO_SETTINGS_MODULE: config.settings.test
+  POSTGRES_DB: careerai_test
+  POSTGRES_USER: careerai
+  POSTGRES_PASSWORD: careerai
+  POSTGRES_HOST: 127.0.0.1
+  POSTGRES_PORT: "5432"
+  # Throwaway key so the suite and the deploy check can exercise field-level
+  # encryption. Real keys come from the deployment environment and never from
+  # a repository (DEVELOPER.md §6.10).
+  FIELD_ENCRYPTION_KEYS: "kQ8sT2vX9pL4nR7yB1cM6wZ0aD3fG5hJ8kN2qS4tV6Y="
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install (hash-verified)
+        run: pip install --require-hashes -r requirements-dev.txt
+      - name: Lock is current
+        # Fails if requirements.in changed without recompiling. Without this the
+        # lock silently drifts from intent and reproducibility is theatre.
+        run: |
+          pipx run uv pip compile requirements.in -o /tmp/req.txt --generate-hashes --quiet
+          pipx run uv pip compile requirements-dev.in -o /tmp/req-dev.txt --generate-hashes --quiet
+          diff -q requirements.txt /tmp/req.txt
+          diff -q requirements-dev.txt /tmp/req-dev.txt
+      - name: Lint
+        run: ruff check .
+      - name: Format check
+        run: ruff format --check .
+      - name: Service signatures
+        # Services take an explicit actor and company, never a request
+        # (SRS §7.2). Held by discipline through P1; by build failure from P2.
+        run: python scripts/check_service_signatures.py
+      - name: Types
+        run: mypy
+      - name: Dependency audit
+        run: pip-audit --strict --requirement requirements.txt
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Same image as docker-compose: the extensions must exist in CI too.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: careerai_test
+          POSTGRES_USER: careerai
+          POSTGRES_PASSWORD: careerai
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U careerai"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install (hash-verified)
+        run: pip install --require-hashes -r requirements-dev.txt
+
+      - name: Django checks
+        # Application-level checks under the settings the suite runs on. This
+        # is what catches files.E002/E003 (permissive scanner, addressable
+        # private storage).
+        run: python manage.py check
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+
+      - name: Deployment checks
+        # Run against production settings, not test settings: --deploy asserts
+        # HSTS, secure cookies and SSL redirect, which test settings do not and
+        # should not set. A throwaway secret keeps security.W009 quiet without
+        # weakening anything real.
+        run: python manage.py check --deploy --fail-level WARNING
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.prod
+          DJANGO_SECRET_KEY: ci-deployment-check-only-3f8a1c9e7b204d65a8f1e3c7d92b6540ae
+          DJANGO_ALLOWED_HOSTS: ci.invalid
+          POSTGRES_PASSWORD: careerai
+          FIELD_ENCRYPTION_KEYS: "kQ8sT2vX9pL4nR7yB1cM6wZ0aD3fG5hJ8kN2qS4tV6Y="
+          # Placeholders so interviews.E001/E002 see a configured provider. The
+          # check asserts configuration is present, not that JaaS accepts it.
+          VIDEO_ROOM_PROVIDER: apps.interviews.providers.jitsi.JitsiRoomProvider
+          JAAS_APP_ID: vpaas-magic-cookie-ci-placeholder
+          JAAS_API_KEY_ID: vpaas-magic-cookie-ci-placeholder/ci
+          JAAS_PRIVATE_KEY_PATH: /nonexistent/ci-placeholder.pem
+
+      - name: Migration drift
+        # Fails when a model change has no migration. Cheaper to catch here
+        # than in a deploy that half-applies.
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Migrations apply
+        run: python manage.py migrate --noinput
+
+      - name: Tests
+        run: coverage run manage.py test --shuffle --verbosity 2
+
+      - name: Coverage gate
+        # 80% floor on services and policies (SRS NFR-11). Reported for
+        # everything, enforced overall.
+        run: |
+          coverage report
+          coverage report --fail-under=80 --include="apps/*/services*,apps/*/services/*,apps/*/policies.py,apps/common/*"

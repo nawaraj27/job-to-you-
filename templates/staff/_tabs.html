@@ -1,0 +1,17 @@
+{% comment %}
+The staff nav. One tab per purpose-built surface (ADR-A5). Companies and People
+exist because moderation is a reason plus an audited service call, which the
+admin change form cannot give.
+{% endcomment %}
+<nav class="mb-8 flex flex-wrap gap-2" aria-label="Staff sections">
+  {% for label, url, icon in tabs %}
+    <a href="{{ url }}"
+       class="btn {% if request.path == url %}btn-primary{% else %}btn-secondary{% endif %}"
+       {% if request.path == url %}aria-current="page"{% endif %}>
+      {% icon icon css_class="size-4.5" %}{{ label }}
+    </a>
+  {% endfor %}
+  <span class="ml-auto self-center text-caption text-content-subtle">
+    Signed in as {{ staff_level }}
+  </span>
+</nav>

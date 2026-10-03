@@ -1,0 +1,71 @@
+{% load static %}<!doctype html>
+{% comment %}
+`prefs_classes` carries the reader's accessibility choices — larger text,
+reduced motion, underlined links, higher contrast. They are rendered here, on
+the server, so the page arrives already in the chosen form rather than
+rearranging itself once a script has run.
+{% endcomment %}
+<html lang="en"
+      class="{% if request.COOKIES.theme == 'dark' %}dark{% endif %} {{ prefs_classes }}"
+      data-theme-source="{{ request.COOKIES.theme|default:prefs_theme|default:'system' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site.name }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Analyse your CV, rebuild it for real hiring systems, find matching roles, and rehearse the interview.{% endblock %}">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1c1a17" media="(prefers-color-scheme: dark)">
+
+  {# Runs before first paint so a dark-mode user never sees a white flash. #}
+  {% include "partials/_theme_script.html" %}
+
+  {% comment %}
+    Two families, both variable, both **self-hosted** (P19). Newsreader carries
+    headlines and figures; Inter carries the interface, and `display: swap` in
+    the face declarations means a slow font never blocks the hero copy.
+
+    They were loaded from Google Fonts until the launch audit ran the pages
+    against the real Content Security Policy and found the stylesheet blocked
+    by `style-src 'self'` — so production had been quietly falling back to
+    system fonts on every page. Serving them from this origin fixes that and
+    removes a third-party request from the critical path.
+  {% endcomment %}
+  <link rel="stylesheet" href="{% asset 'fonts/fonts.css' %}">
+
+  <link rel="stylesheet" href="{% asset 'css/dist/site.css' %}">
+  <link rel="icon" href="{% static 'img/brand/favicon-32.png' %}" type="image/png" sizes="32x32">
+  <link rel="icon" href="{% static 'img/brand/icon-192.png' %}" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="{% static 'img/brand/apple-touch-icon.png' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-dvh bg-canvas text-content antialiased {% block body_class %}{% endblock %}">
+
+  <a href="#main" class="skip-link btn btn-secondary btn-sm">Skip to content</a>
+
+  {% block header %}{% include "partials/header.html" %}{% endblock %}
+
+  {% if impersonation %}{% include "partials/impersonation_banner.html" %}{% endif %}
+
+  <main id="main" tabindex="-1">
+    {% include "partials/messages.html" %}
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}{% include "partials/footer.html" %}{% endblock %}
+
+  {% comment %}
+    One polite live region for the page. Actions whose confirmation is purely
+    visual — a bookmark filling in, a filter chip disappearing — announce here
+    instead of going unreported.
+  {% endcomment %}
+  <div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  {% include "partials/confirm_dialog.html" %}
+
+  <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
+  <script src="{% asset 'js/app.js' %}" defer></script>
+  <script src="{% static 'vendor/alpine.min.js' %}" defer></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

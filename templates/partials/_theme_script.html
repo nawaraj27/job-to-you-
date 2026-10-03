@@ -1,0 +1,16 @@
+{% comment %}
+Theme resolution, in priority order:
+  1. explicit user choice stored in the `theme` cookie (rendered server-side on <html>)
+  2. operating-system preference
+Kept inline and synchronous — an external or deferred script would repaint.
+{% endcomment %}
+<script nonce="{{ csp_nonce }}">
+  (function () {
+    var root = document.documentElement;
+    var stored = root.dataset.themeSource;
+    if (stored !== 'light' && stored !== 'dark') {
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.classList.toggle('dark', prefersDark);
+    }
+  })();
+</script>

@@ -1,0 +1,75 @@
+{% extends "layouts/page.html" %}
+
+{% block title %}Pricing — {{ site.name }}{% endblock %}
+{% block page_heading %}Simple pricing, no surprises{% endblock %}
+{% block page_intro %}
+  <p class="mt-4 max-w-2xl text-body-lg leading-relaxed text-content-muted">
+    The analysis is free because you should be able to see the problem before you
+    pay to fix it.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <div class="grid gap-5 lg:grid-cols-3">
+    {% for plan in plans %}
+      <article class="card card-body flex flex-col {% if plan.featured or plan.is_current %}ring-1 ring-brand-600{% endif %}">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-base font-semibold">{{ plan.name }}</h2>
+          {% if plan.is_current %}<span class="badge badge-positive">Your plan</span>
+          {% elif plan.featured %}<span class="badge badge-accent">Most popular</span>{% endif %}
+        </div>
+
+        <p class="mt-4 flex items-baseline gap-1.5">
+          <span class="text-3xl font-semibold tracking-tight">{{ plan.price }}</span>
+          <span class="text-sm text-content-subtle">{{ plan.cadence }}</span>
+        </p>
+
+        <p class="mt-3 text-sm leading-relaxed text-content-muted">{{ plan.summary }}</p>
+
+        <ul class="mt-6 flex-1 space-y-2.5">
+          {% for feature in plan.features %}
+            <li class="flex items-start gap-2.5 text-sm">
+              <span class="mt-0.5 shrink-0 text-success-fg">{% icon "check" css_class="size-4" %}</span>
+              <span class="text-content-muted">{{ feature }}</span>
+            </li>
+          {% endfor %}
+          {% for missing in plan.excluded %}
+            <li class="flex items-start gap-2.5 text-sm">
+              <span class="mt-0.5 shrink-0 text-content-subtle">{% icon "minus" css_class="size-4" %}</span>
+              <span class="text-content-subtle"><span class="sr-only">Not included: </span>{{ missing }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+
+        {% if plan.cta.url %}
+          <a href="{{ plan.cta.url }}"
+             class="btn mt-7 btn-block {% if plan.featured or plan.code == 'pro' and not plan.is_current %}btn-primary{% else %}btn-secondary{% endif %}">
+            {{ plan.cta.label }}
+          </a>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+
+  <section class="mt-16 md:mt-24">
+    {% include "components/section_header.html" with title="Questions people actually ask" %}
+
+    <div class="mt-8 max-w-3xl divide-y divide-hairline border-y border-hairline">
+      {% for item in faq %}
+        <div x-data="disclosure()">
+          <button type="button" @click="toggle()"
+                  class="flex w-full items-center justify-between gap-4 py-4 text-left"
+                  :aria-expanded="open ? 'true' : 'false'">
+            <span class="text-body-lg font-medium">{{ item.question }}</span>
+            <span class="shrink-0 text-content-subtle transition-transform" :class="open && 'rotate-180'">
+              {% icon "chevron-down" css_class="size-4.5" %}
+            </span>
+          </button>
+          <div x-show="open" x-cloak x-transition.opacity.duration.150ms class="pb-5">
+            <p class="max-w-2xl text-sm leading-relaxed text-content-muted">{{ item.answer }}</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

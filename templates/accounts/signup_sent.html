@@ -1,0 +1,25 @@
+{% extends "layouts/auth.html" %}
+{% comment %}
+Every accepted sign-up lands here, whether the address was new or already had an
+account (decision D-12). The page must read the same in both cases; the email
+says which it was.
+{% endcomment %}
+
+{% block title %}Check your email — {{ site.name }}{% endblock %}
+{% block auth_title %}Check your email{% endblock %}
+{% block auth_subtitle %}We've sent the next step to the address you gave.{% endblock %}
+
+{% block auth_body %}
+  <div class="space-y-4">
+    {% include "components/alert.html" with level="info" text=message %}
+    <p class="text-meta leading-relaxed text-content-muted">
+      Nothing arrived after a few minutes? Check spam, or
+      <a href="{% url 'accounts:signup' %}{% if next %}?next={{ next|urlencode }}{% endif %}" class="underline hover:text-content">try again</a>.
+    </p>
+    <a href="{% url 'accounts:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}" class="btn btn-primary btn-block btn-lg">Sign in</a>
+  </div>
+{% endblock %}
+
+{% block auth_footer %}
+  Forgotten your password? <a href="{% url 'accounts:password_reset' %}" class="font-medium text-accent-content hover:underline">Reset it</a>
+{% endblock %}

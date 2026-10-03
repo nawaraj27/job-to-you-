@@ -1,0 +1,35 @@
+{% load static %}{% comment %}
+The brand lockup: the only place the logo is drawn (docs/BRANDING.md).
+
+  {% include "components/brand_mark.html" %}
+  {% include "components/brand_mark.html" with size="lg" %}
+  {% include "components/brand_mark.html" with mark_only=1 %}
+
+The mark is the supplied logo's symbol, cut from the original artwork with its
+colours untouched (static/img/brand/kaarya-mark.*). The wordmark is live text,
+because the supplied artwork spells the name "KARYA" and the name is Kaarya;
+text in the logo's navy and weight keeps the lockup correct and sharp at every
+size. On the dark theme the mark sits on a small light tile, so its navy stays
+legible without recolouring it.
+
+size      — sm | md (default) | lg (lg also shows the tagline)
+mark_only — the symbol alone, named for assistive technology
+{% endcomment %}
+{% with size=size|default:"md" %}
+<span class="flex items-center gap-2.5">
+  <picture class="brand-mark shrink-0">
+    <source srcset="{% static 'img/brand/kaarya-mark.webp' %}" type="image/webp">
+    <img src="{% static 'img/brand/kaarya-mark.png' %}" width="383" height="305"
+         alt="{% if mark_only %}{{ site.name }}{% endif %}"
+         class="w-auto {% if size == 'lg' %}h-10{% elif size == 'sm' %}h-7{% else %}h-8{% endif %}">
+  </picture>
+  {% if not mark_only %}
+    <span class="flex min-w-0 flex-col">
+      <span class="brand-wordmark {% if size == 'lg' %}text-xl{% elif size == 'sm' %}text-[0.95rem]{% else %}text-[1.0625rem]{% endif %}">{{ site.name }}</span>
+      {% if size == "lg" and site.tagline %}
+        <span class="brand-tagline">{{ site.tagline }}</span>
+      {% endif %}
+    </span>
+  {% endif %}
+</span>
+{% endwith %}

@@ -1,0 +1,75 @@
+{% comment %}
+Renders one bound form field with label, control, hint and errors.
+
+  {% include "components/form_field.html" with field=form.email %}
+  {% include "components/form_field.html" with field=form.password1 hint="At least 8 characters." %}
+
+Keeps every form in the product visually identical without hand-writing markup.
+
+Accessibility wiring done here so no form has to remember it:
+
+  · the hint and the error are given ids and referenced from `aria-describedby`,
+    so a screen reader reads "Email, edit text, we'll never share this" rather
+    than announcing the label alone and leaving the hint to the visual reader
+  · an invalid field gets `aria-invalid="true"` and its error carries
+    `role="alert"`, which announces the failure at the moment it appears
+  · optional fields are marked rather than required ones. Most fields in this
+    product are required, and an asterisk on nine of eleven fields is noise
+    that stops being read by the third form
+
+`field.errors` is Django's, so server-side validation is announced the same way
+client-side validation would be.
+{% endcomment %}
+{% load widget_tweaks %}
+
+{% with kind=field|widget_type described=field.auto_id|add:"-desc" errid=field.auto_id|add:"-error" %}
+<div class="field">
+
+  {% if kind == "checkboxinput" %}
+    <label class="flex min-h-9 items-start gap-2.5 py-1 text-sm">
+      {% render_field field class+="mt-0.5 size-4 rounded-xs border-hairline-strong accent-brand-600" %}
+      <span>{{ field.label }}</span>
+    </label>
+
+  {% elif kind == "radioselect" %}
+    <fieldset>
+      <legend class="label">{{ field.label }}</legend>
+      <div class="mt-2 grid gap-2 sm:grid-cols-2">
+        {% for radio in field %}
+          <label class="choice">
+            {{ radio.tag }}
+            <span class="text-sm font-medium">{{ radio.choice_label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+  {% else %}
+    <label for="{{ field.id_for_label }}" class="label">
+      {{ field.label }}
+      {% if not field.field.required %}<span class="font-normal text-content-subtle">(optional)</span>{% endif %}
+    </label>
+
+    {% with control=field|control_class %}
+      {% if field.errors %}
+        {% render_field field class+=control aria-invalid="true" aria-describedby=errid %}
+      {% elif hint or field.help_text %}
+        {% render_field field class+=control aria-describedby=described %}
+      {% else %}
+        {% render_field field class+=control %}
+      {% endif %}
+    {% endwith %}
+  {% endif %}
+
+  {% if hint or field.help_text %}
+    <p id="{{ described }}" class="hint">{{ hint|default:field.help_text }}</p>
+  {% endif %}
+
+  {% if field.errors %}
+    <p id="{{ errid }}" class="field-error" role="alert">
+      {% icon "error" css_class="mt-px size-4 shrink-0" %}
+      <span>{{ field.errors|join:" " }}</span>
+    </p>
+  {% endif %}
+</div>
+{% endwith %}

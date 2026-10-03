@@ -1,0 +1,152 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+Webhook endpoints.
+
+The signing secret appears exactly twice in this product's life: right after
+creation, and right after a rotation. It is stored encrypted rather than hashed
+because the server signs every delivery with it — but a page that reprints a
+signing key on every load is a page somebody eventually screenshots into a
+support ticket.
+
+Recent deliveries are on the same screen as the endpoints because "did it
+arrive" is the question people open this page with, and sending them to a log
+somewhere else to find out is how integrations get abandoned.
+{% endcomment %}
+
+{% block title %}Webhooks - {{ company.name }}{% endblock %}
+{% block page_heading %}Webhooks{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    We POST a signed JSON body to your endpoint when something happens. Verify the
+    <code>X-CareerAI-Signature</code> header before trusting it.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  {% if new_secret %}
+    <div class="alert alert-info mb-6" role="status">
+      <span class="mt-px shrink-0 text-info-fg">{% icon "lock" css_class="size-5" %}</span>
+      <div class="min-w-0">
+        <p class="alert-title">Your signing secret</p>
+        <p class="mt-1 break-all font-mono text-sm">{{ new_secret }}</p>
+        <p class="mt-2 text-meta text-content-muted">
+          Copy it now. This is the last time this page will show it.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+
+  <section>
+    <h2 class="text-lg font-semibold">Your endpoints</h2>
+    <ul class="mt-4 divide-y divide-hairline">
+      {% for endpoint in endpoints %}
+        <li class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5">
+          <div class="min-w-0 grow">
+            <p class="break-all font-medium">{{ endpoint.url }}</p>
+            <p class="mt-0.5 text-meta text-content-muted">
+              {% if endpoint.event_types %}
+                {{ endpoint.event_types|join:", " }}
+              {% else %}
+                Every event
+              {% endif %}
+              {% if not endpoint.is_live %}
+                · <span class="text-danger-fg">disabled{% if endpoint.disabled_reason %}: {{ endpoint.disabled_reason }}{% endif %}</span>
+              {% elif endpoint.consecutive_failures %}
+                · {{ endpoint.consecutive_failures }} consecutive failure{{ endpoint.consecutive_failures|pluralize }}
+              {% endif %}
+            </p>
+          </div>
+
+          {% if can_manage %}
+            <form method="post" class="flex flex-wrap gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="endpoint" value="{{ endpoint.public_id }}">
+              <button class="btn btn-quiet btn-sm" type="submit" name="action" value="rotate">
+                Rotate secret
+              </button>
+              {% if endpoint.is_live %}
+                <button class="btn btn-quiet btn-sm" type="submit" name="action" value="disable">
+                  Disable
+                </button>
+              {% else %}
+                <button class="btn btn-quiet btn-sm" type="submit" name="action" value="enable">
+                  Enable
+                </button>
+              {% endif %}
+              <button class="btn btn-quiet btn-sm" type="submit" name="action" value="delete">
+                Delete
+              </button>
+            </form>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li class="py-3 text-sm text-content-muted">No endpoints yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% if can_manage %}
+    <section class="mt-8 max-w-2xl">
+      <h2 class="text-lg font-semibold">Add an endpoint</h2>
+      <form method="post" class="mt-4 space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+
+        <div>
+          <label class="label" for="url">URL</label>
+          <input class="input" id="url" name="url" type="url" required
+                 placeholder="https://example.com/hooks/careerai">
+          <p class="mt-1 text-meta text-content-subtle">
+            Must be https and must resolve to a public address. We refuse private
+            networks and localhost.
+          </p>
+        </div>
+
+        <div>
+          <label class="label" for="description">What it is for</label>
+          <input class="input" id="description" name="description" maxlength="200">
+        </div>
+
+        <fieldset>
+          <legend class="label">Events</legend>
+          <p class="mb-2 text-meta text-content-subtle">
+            Choose none to receive everything.
+          </p>
+          <div class="grid gap-1.5 sm:grid-cols-2">
+            {% for event_type in event_types %}
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="event_types" value="{{ event_type }}">
+                <code>{{ event_type }}</code>
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+
+        <button class="btn btn-primary" type="submit">Create endpoint</button>
+      </form>
+    </section>
+  {% else %}
+    <p class="mt-6 text-sm text-content-subtle">Managing webhooks needs admin access.</p>
+  {% endif %}
+
+  <section class="mt-10">
+    <h2 class="text-lg font-semibold">Recent deliveries</h2>
+    <ul class="mt-4 divide-y divide-hairline">
+      {% for delivery in recent %}
+        <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 text-sm">
+          <div class="min-w-0">
+            <code>{{ delivery.event.type }}</code>
+            <span class="ml-2 text-meta text-content-muted">
+              attempt {{ delivery.attempt }} · {{ delivery.created_at|timesince }} ago
+            </span>
+          </div>
+          <span class="{% if delivery.succeeded %}text-success-fg{% else %}text-danger-fg{% endif %}">
+            {% if delivery.status_code %}HTTP {{ delivery.status_code }}{% else %}{{ delivery.error|default:"pending" }}{% endif %}
+          </span>
+        </li>
+      {% empty %}
+        <li class="py-3 text-sm text-content-muted">Nothing delivered yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endblock %}

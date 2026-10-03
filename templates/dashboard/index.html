@@ -1,0 +1,260 @@
+{% extends "layouts/app.html" %}
+{% load demo_ads %}
+{% comment %}
+Candidate overview.
+
+Two screens, not one with hidden rows. A brand-new account gets a path; an
+account with work behind it gets the state of that work. Both open with a
+single next action, stated as a sentence — because the failure mode of a
+dashboard is eight tiles of equal weight and no opinion about which matters.
+
+Below the fold it is deliberately quiet: rows and hairlines, one number per
+idea, and no card whose only content is a figure.
+{% endcomment %}
+
+{% block title %}Overview — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+<div class="app-head">
+  <p class="text-meta text-content-muted">{{ viewer.headline }}</p>
+  <h1 class="app-title mt-1">Good to see you, {{ viewer.first_name }}</h1>
+</div>
+{% endblock %}
+
+{% block app_body %}
+
+{% comment %}
+  The one next action.
+
+  It used to sit behind a coloured left bar. The bar was doing nothing that
+  position and scale were not already doing — this is the first thing on the
+  page, in the largest type on the page, with the only filled button above the
+  fold. A rule beside it just announced "this is the important one" a second
+  time, which is the visual equivalent of writing "important:" in front of a
+  sentence that already is.
+{% endcomment %}
+<section class="max-w-[46ch]">
+  <p class="overline">{{ next_action.eyebrow }}</p>
+  <h2 class="mt-3 text-[1.75rem] leading-[1.2] sm:text-[2rem]">{{ next_action.title }}</h2>
+  <p class="mt-3 text-body-lg leading-relaxed text-content-muted">{{ next_action.text }}</p>
+  <a href="{% url next_action.url_name %}" class="btn btn-primary btn-lg mt-6">
+    {% icon next_action.icon css_class="size-4.5" %}{{ next_action.label }}
+  </a>
+</section>
+
+{% if uploads_in_flight %}
+  <div class="mt-8 max-w-2xl">
+    <div class="alert alert-info" role="status">
+      <span class="mt-px shrink-0 text-brand-600">{% icon "clock" css_class="size-5" %}</span>
+      <div class="min-w-0">
+        <p class="font-medium">
+          Still reading {% if uploads_in_flight|length == 1 %}{{ uploads_in_flight.0.original_filename }}{% else %}{{ uploads_in_flight|length }} CVs{% endif %}
+        </p>
+        <p class="mt-0.5 text-content-muted">
+          It carries on without you.
+          <a href="{% url 'resume:upload' %}" class="link-editorial">See where it has got to</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% if is_new %}
+
+  {# ============ NEW ACCOUNT: the path ============ #}
+  {% if saved_cvs or drafts %}
+    <div class="mt-12 stack">{% include "dashboard/_cvs.html" %}</div>
+  {% endif %}
+
+  <section class="mt-12">
+    <div class="stack-head"><h2 class="stack-title">How this works</h2></div>
+    <ol class="mt-2">
+      {% for step in onboarding %}
+        <li class="step-row {% if forloop.last %}border-b border-hairline{% endif %}">
+          <span class="step-number" aria-hidden="true">0{{ forloop.counter }}</span>
+          <div class="min-w-0">
+            <h3 class="flex flex-wrap items-center gap-2.5 text-base">
+              {{ step.title }}
+              {% if step.state == "current" %}<span class="badge badge-accent">Start here</span>{% endif %}
+            </h3>
+            <p class="mt-2 max-w-[54ch] text-body-lg leading-relaxed text-content-muted">{{ step.text }}</p>
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <div class="mt-12 grid gap-8 md:grid-cols-2">
+    <section>
+      <div class="stack-head"><h2 class="stack-title">{% if saved_cvs or drafts %}Start another CV{% else %}Or start without a CV{% endif %}</h2></div>
+      {% comment %}
+        The number is the one the guided flow actually asks. It said twelve,
+        which was never true of any version of that screen, and a promise about
+        how long something takes is the one piece of copy a first-time user
+        checks against reality within a minute of believing it.
+      {% endcomment %}
+      <p class="mt-3 text-body-lg leading-relaxed text-content-muted">
+        {% if not saved_cvs and not drafts %}No CV to upload? {% endif %}Describe the one you want in your own words. The
+        assistant asks about anything it needs and drafts the CV from your
+        answers; you check every line.
+      </p>
+      <a href="{% url 'resume:ai' %}?new=1" class="btn btn-secondary mt-4">
+        {% icon "lightbulb" css_class="size-4" %}Start an Assisted CV
+      </a>
+      <p class="mt-3 text-meta text-content-muted">
+        Prefer a form? <a href="{% url 'resume:builder' %}" class="link-editorial">The guided route</a>
+        asks {{ guided_question_count }} short questions.
+      </p>
+    </section>
+
+    <section>
+      <div class="stack-head"><h2 class="stack-title">Or just look around</h2></div>
+      <p class="mt-3 text-body-lg leading-relaxed text-content-muted">
+        Browsing jobs needs no account data at all. Matching gets switched on the
+        moment a CV exists.
+      </p>
+      <a href="{% url 'jobs:list' %}" class="btn btn-secondary mt-4">
+        {% icon "search" css_class="size-4" %}Browse jobs
+      </a>
+    </section>
+  </div>
+
+{% else %}
+
+  {# ============ ACTIVE ACCOUNT ============ #}
+  <div class="mt-12 grid gap-10 lg:grid-cols-[1fr_18rem] lg:gap-14">
+    <div class="min-w-0 stack">
+
+      {# --- CV health --- #}
+      <section>
+        <div class="stack-head">
+          <h2 class="stack-title">Your CV</h2>
+          <a href="{% url 'resume:analysis' %}" class="link-editorial">Full analysis</a>
+        </div>
+
+        <div class="mt-5 flex flex-wrap items-start gap-6">
+          {% include "components/score_ring.html" with value=report.score size=72 label="CV score" %}
+          <div class="min-w-0 flex-1">
+            <p class="text-body-lg font-semibold">{{ report.verdict }}</p>
+            <p class="mt-1 text-meta text-content-muted">
+              {{ report.filename }} · analysed {{ report.uploaded_on }}
+            </p>
+            <ul class="mt-4 space-y-2.5">
+              {% for fix in top_fixes %}
+                <li class="flex gap-2.5 text-body leading-relaxed">
+                  {% icon "error" css_class="mt-0.5 size-4 shrink-0 text-danger-fg" %}
+                  <span class="text-content-muted">{{ fix.title }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {% comment %}
+        Matched roles.
+
+        Named for the profile rather than the CV, because that is what the
+        scorer reads (ADR-A46): a candidate told their CV was matched, whose
+        CV lists eight skills their profile does not, has been told something
+        untrue about why the list is short.
+      {% endcomment %}
+      <section>
+        <div class="stack-head">
+          <h2 class="stack-title">
+            Matched to your profile
+            {% if strong_count %}
+              <span class="ml-1.5 font-normal text-content-muted">· {{ strong_count }} above 70%</span>
+            {% endif %}
+          </h2>
+          <a href="{% url 'jobs:recommended' %}" class="link-editorial">All matches</a>
+        </div>
+        {% if matched %}
+          <ul class="rows mt-2">
+            {% for job in matched %}
+              {% include "components/job_row.html" with job=job show_match=1 %}
+            {% endfor %}
+          </ul>
+        {% else %}
+          {% comment %}
+            Matching reads the profile's skills, not the CV's. Saying so is the
+            difference between an empty list and an instruction.
+          {% endcomment %}
+          <p class="mt-3 text-content-muted">
+            Nothing matched yet. Matching reads the skills on
+            <a href="{% url 'dashboard:profile' %}" class="link-editorial">your profile</a>;
+            adding a few is what switches it on.
+          </p>
+        {% endif %}
+      </section>
+
+      {# --- Applications --- #}
+      <section>
+        <div class="stack-head">
+          <h2 class="stack-title">Applications in progress</h2>
+          <a href="{% url 'applications:index' %}" class="link-editorial">All applications</a>
+        </div>
+        {% if applications %}
+          <ul class="rows mt-2">
+            {% for application in applications %}
+              <li class="row flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3.5">
+                <div class="min-w-0">
+                  <a class="text-body-lg font-medium hover:underline [text-underline-offset:0.2em]"
+                     href="{% url 'applications:detail' application.public_id %}">
+                    {{ application.job.title }}
+                  </a>
+                  <p class="mt-0.5 text-meta text-content-muted">
+                    {{ application.job.company.name }} ·
+                    applied {{ application.applied_at|date:"j M Y" }}
+                  </p>
+                </div>
+                {# The candidate-facing label, never an internal stage name (FR-6.10). #}
+                <span class="badge badge-neutral">{{ application.candidate_status }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          {% include "components/empty_state.html" with icon="clipboard" title="Nothing sent yet" text="Applications you make through the platform show up here with their dates and replies." %}
+        {% endif %}
+      </section>
+
+      {% include "dashboard/_cvs.html" %}
+    </div>
+
+    {% comment %}
+      The side column used to open with three figures — saved roles,
+      applications open, matches above 70%. The first two are already printed
+      next to their own rail links two inches to the left, so they were the
+      same number stated twice on one screen, and a figure you have already
+      read is a figure you stop reading. Only the one that appears nowhere
+      else survives, and it now sits on the section it describes.
+    {% endcomment %}
+    <aside class="space-y-8">
+      <section>
+        <p class="overline">Recent activity</p>
+        <ul class="mt-3 space-y-3.5">
+          {% for event in activity %}
+            <li class="flex gap-2.5">
+              <span class="mt-0.5 shrink-0 text-content-subtle">{% icon event.icon css_class="size-4" %}</span>
+              <div class="min-w-0">
+                {% comment %}
+                  A resolved URL rather than a route name: an activity row
+                  points at the application it happened to, and that route
+                  takes an argument. `{% url event.url_name %}` could only ever
+                  render rows that needed none, and raised `NoReverseMatch` for
+                  everything else.
+                {% endcomment %}
+                <a href="{{ event.url }}" class="text-meta leading-relaxed hover:underline [text-underline-offset:0.2em]">{{ event.text }}</a>
+                <p class="text-caption text-content-subtle">{{ event.when }}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% comment %}The side column, under everything that is about the candidate.{% endcomment %}
+      {% demo_ad "dashboard" %}
+    </aside>
+  </div>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,74 @@
+{% comment %}
+Appearance and accessibility.
+
+Every control here changes this page as you use it — there is no preview and no
+Save. The theme choice writes the same cookie the header switch writes, so the
+two can never disagree; the accessibility classes are rendered onto <html> by
+the server, so they survive a reload and are in force before the first paint.
+
+`prefs:changed` is fired by the view because <html> sits outside every swap
+target: the only element that needs updating is the one HTMX cannot reach.
+{% endcomment %}
+{% url 'settings:appearance_act' as act %}
+<div id="appearance-body">
+  {% include "settings/_flash.html" %}
+
+  <section class="stack">
+    <div class="stack-head"><h2 class="stack-title">Theme</h2></div>
+    <fieldset class="mt-5">
+      <legend class="sr-only">Theme</legend>
+      <div class="grid gap-2 sm:grid-cols-3">
+        {% for theme in themes %}
+          <label class="choice items-center">
+            <input type="radio" name="theme" value="{{ theme.key }}"
+                   class="size-4 accent-brand-600"
+                   {% if prefs.appearance.theme == theme.key %}checked{% endif %}
+                   hx-post="{{ act }}"
+                   hx-vals='{"command": "theme", "value": "{{ theme.key }}"}'
+                   hx-trigger="change"
+                   hx-target="#appearance-body" hx-swap="outerHTML">
+            <span class="flex items-center gap-2">
+              <span class="text-content-subtle">{% icon theme.icon css_class="size-4.5" %}</span>
+              <span class="font-medium">{{ theme.label }}</span>
+            </span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <p class="mt-3 text-meta text-content-subtle">
+      “Match my system” follows your operating system, including when it changes
+      at sunset.
+    </p>
+  </section>
+
+  <section class="stack mt-10">
+    <div class="stack-head"><h2 class="stack-title">Accessibility</h2></div>
+    <p class="mt-2 text-content-muted">
+      These apply to the whole product, not just this page. Your system settings
+      are already respected. These settings override them here.
+    </p>
+    <div class="mt-3">
+      {% for item in accessibility %}
+        {% include "settings/_switch_row.html" with act=act target="#appearance-body" key=item.key on=item.on label=item.label text=item.text %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mt-10 border-t border-hairline pt-6">
+    <p class="overline">Preview</p>
+    <div class="mt-3 card">
+      <div class="card-body">
+        <h3 class="text-lg">Senior Backend Engineer</h3>
+        <p class="mt-1.5 text-content-muted">
+          Trailhead · Lalitpur · Hybrid. This paragraph contains
+          <a href="{% url 'jobs:list' %}">a link in body text</a>, so you can see
+          what underlining does before you commit to it.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-1.5">
+          <span class="chip chip-match">{% icon "check" css_class="size-3" %}Python</span>
+          <span class="chip chip-gap">{% icon "warning" css_class="size-3" %}Kubernetes</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,268 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+Verification. The middle states are the point: an employer who has submitted and
+is waiting needs to see that, because that is the day they look hardest.
+
+Documents are uploaded here and can change only before submitting, when a
+reviewer asks for more information, or from thirty days after a rejection
+(decision D-02); while a review is in progress they are frozen, so the reviewer
+reads what the company actually sent. Earlier decisions stay listed.
+
+Domain proof is optional (decision D-07): extra evidence beside the documents,
+never a step that has to come first.
+{% endcomment %}
+
+{% block title %}Verification - {{ company.name }}{% endblock %}
+{% block page_heading %}Verification{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    Verified listings carry a badge and are applied to more often. Your postings
+    stay live while a review is in progress.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <div class="max-w-2xl space-y-6">
+    <section class="card space-y-4 p-6" aria-labelledby="verification-state">
+      <h2 id="verification-state" class="font-medium">
+        Current state <span class="badge ml-2">{{ verification.get_state_display }}</span>
+      </h2>
+
+      {% if verification.reason and verification.state != 'pending' %}
+        <div class="alert alert-warning">
+          <p class="font-medium">Note from the reviewer</p>
+          <p class="mt-1 break-words">{{ verification.reason }}</p>
+        </div>
+      {% endif %}
+
+      {% if verification.state == 'pending' %}
+        <p class="text-sm text-content-muted">
+          A reviewer usually looks within two working days. Documents cannot change while the review is in progress.
+        </p>
+        {% if missing_kinds %}
+          <p class="text-sm text-content-muted">
+            A reviewer will also look for:
+            {% for label in missing_kinds %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+            If they ask for it, you will be able to add it here without starting again.
+          </p>
+        {% endif %}
+      {% elif verification.state == 'verified' %}
+        <p class="text-sm text-content-muted">Your company page and listings show the verified badge.</p>
+      {% elif verification.state == 'rejected' %}
+        {% if editable %}
+          <p class="text-sm text-content-muted">
+            This submission was not verified. You can now update your documents and apply again.
+            The earlier decision stays on record.
+          </p>
+        {% elif in_editable_state %}
+          <p class="text-sm text-content-muted">
+            This submission was not verified. The company can apply again now; someone who can
+            edit the company needs to send it.
+          </p>
+        {% else %}
+          <p class="text-sm text-content-muted">
+            This submission was not verified. You can apply again from
+            <strong>{{ reapply_opens_at|date:"j M Y" }}</strong>, {{ reapply_days }} days after the decision.
+            If you think the decision is wrong,
+            <a class="underline" href="{% url 'core:contact' %}">contact {{ site.name }}</a>.
+          </p>
+        {% endif %}
+      {% elif verification.state == 'more_info' %}
+        <p class="text-sm text-content-muted">Add what the reviewer asked for, then submit again.</p>
+      {% endif %}
+    </section>
+
+    <section class="card space-y-3 p-6" aria-labelledby="verification-domain">
+      <h2 id="verification-domain" class="font-medium">Your domain</h2>
+      {% if proven_domain %}
+        <p class="text-sm">
+          <span class="badge">Proven</span>
+          {{ proven_domain.domain }} is confirmed for {{ company.name }}{% if proven_domain.verified_at %} since {{ proven_domain.verified_at|date:"j M Y" }}{% endif %}.
+          Reviewers see this beside your documents.
+        </p>
+      {% elif not domain %}
+        <p class="text-sm text-content-muted">
+          Proving a domain is optional. It needs a company website on your
+          <a class="underline" href="{% url 'employer:profile' company.slug %}">company profile</a>
+          that is not a free-mail provider.
+        </p>
+      {% elif work_address and can_edit %}
+        <p class="text-sm text-content-muted">You have confirmed {{ work_address.email }}.</p>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="prove_domain">
+          <button class="btn btn-secondary" type="submit">Confirm {{ domain }} for {{ company.name }}</button>
+        </form>
+      {% elif can_edit %}
+        <p class="text-sm text-content-muted">
+          Optional, and it helps a reviewer: confirm an email address ending in @{{ domain }}.
+        </p>
+        <form method="post" class="flex flex-wrap items-end gap-3">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="domain_email">
+          <div class="min-w-0 grow">
+            <label class="label" for="domain-email">Work email at {{ domain }}</label>
+            <input class="input" id="domain-email" name="email" type="email" required
+                   autocomplete="email" placeholder="you@{{ domain }}">
+          </div>
+          <button class="btn btn-secondary" type="submit">Send a confirmation link</button>
+        </form>
+      {% else %}
+        <p class="text-sm text-content-subtle">Not proven yet. Someone who can edit the company can do this.</p>
+      {% endif %}
+    </section>
+
+    <section class="card p-6" aria-labelledby="verification-documents">
+      <h2 id="verification-documents" class="font-medium">Documents</h2>
+
+      {% comment %}
+      What a reviewer needs, and whether it has arrived. Listed before the
+      uploads rather than after them, because the question the company is
+      asking on this screen is "what else do you want from me" — and the
+      answer used to be a sentence in the submit card that nothing checked.
+
+      A file that is still being scanned counts as here: it is on its way.
+      One that could not be accepted does not, because a reviewer cannot open
+      it.
+      {% endcomment %}
+      <ul class="mt-3 space-y-1 text-sm">
+        {% for item in checklist %}
+          <li class="flex items-start gap-2">
+            {% if item.present %}
+              <span class="mt-px shrink-0 text-success-fg">{% icon "check-circle" css_class="size-4" %}</span>
+              <span>{{ item.label }} <span class="text-content-subtle">(attached)</span></span>
+            {% else %}
+              <span class="mt-px shrink-0 text-content-subtle">{% icon "minus-circle" css_class="size-4" %}</span>
+              <span>{{ item.label }} <span class="text-content-subtle">(still needed)</span></span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+
+      {% if documents %}
+        <ul class="mt-3 divide-y divide-hairline">
+          {% for document in documents %}
+            <li class="flex flex-wrap items-center gap-3 py-3">
+              <span class="min-w-0 grow">
+                <span class="block font-medium">{{ document.label }}</span>
+                <span class="block break-all text-sm text-content-subtle">
+                  {{ document.attachment.filename }} · added {{ document.created_at|date:"j M Y" }}
+                  {% if document.attachment.scan_status == 'pending' %}
+                    · being checked
+                  {% elif document.attachment.scan_status != 'clean' %}
+                    · could not be accepted, remove it and upload it again
+                  {% endif %}
+                </span>
+              </span>
+              {% if editable %}
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="remove">
+                  <input type="hidden" name="document_id" value="{{ document.pk }}">
+                  <button class="btn btn-quiet" type="submit">
+                    Remove<span class="sr-only"> {{ document.attachment.filename }}</span>
+                  </button>
+                </form>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mt-2 text-sm text-content-muted">No documents yet.</p>
+      {% endif %}
+
+      {% if editable %}
+        <form method="post" enctype="multipart/form-data" class="mt-5 space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="upload">
+
+          <div>
+            <label class="label" for="kind">Which document</label>
+            <select class="input" id="kind" name="kind" required>
+              {% for value, label in kinds %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="label" for="document">File</label>
+            <input class="input" id="document" name="document" type="file" required
+                   accept=".pdf,.docx,.png,.jpg,.jpeg" aria-describedby="document-hint">
+            <p id="document-hint" class="mt-1 text-sm text-content-subtle">
+              PDF, Word, PNG or JPEG, up to {{ max_upload_mb }} MB.
+            </p>
+          </div>
+
+          <button class="btn btn-secondary" type="submit">Upload document</button>
+        </form>
+      {% endif %}
+    </section>
+
+    {% if editable %}
+      <section class="card space-y-3 p-6" aria-labelledby="verification-submit">
+        <h2 id="verification-submit" class="font-medium">Send for review</h2>
+        <p class="text-sm text-content-muted">
+          Attach your registration certificate and PAN or VAT certificate, then send them to a reviewer.
+          Proving your domain above is optional.
+          {% if verification.state == 'rejected' %}This starts attempt {{ verification.attempt|add:1 }}.{% endif %}
+        </p>
+
+        {% comment %}
+        An incomplete submission is allowed and is not silently accepted as
+        complete: the company is told what a reviewer will look for, and a
+        reviewer who does not find it asks for more information — which is
+        the same attempt, not a rejection (decision D-02). Refusing the
+        submit instead would shut out a company that genuinely holds only
+        one of the two certificates.
+        {% endcomment %}
+        {% if missing_kinds and documents %}
+          <div class="alert alert-warning" role="status">
+            <span class="mt-px shrink-0 text-warning-fg">{% icon "warning" css_class="size-5" %}</span>
+            <div class="min-w-0">
+              <p class="font-medium">Not everything a reviewer looks for is here</p>
+              <p class="mt-0.5 text-content-muted">
+                Still needed: {% for label in missing_kinds %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+                You can send it as it is; a reviewer will most likely ask for the rest, which
+                keeps this as the same attempt.
+              </p>
+            </div>
+          </div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="submit">
+          <button class="btn btn-primary" type="submit"
+                  {% if not documents %}disabled aria-describedby="submit-hint"{% endif %}>
+            Submit for review
+          </button>
+        </form>
+        {% if not documents %}
+          <p id="submit-hint" class="text-sm text-content-subtle">Upload at least one document first.</p>
+        {% endif %}
+      </section>
+    {% elif in_editable_state and not can_edit %}
+      <p class="text-sm text-content-subtle">
+        Only an owner, an admin, or a member allowed to edit the company can add documents and submit.
+      </p>
+    {% endif %}
+
+    {% if history %}
+      <section class="card space-y-3 p-6" aria-labelledby="verification-history">
+        <h2 id="verification-history" class="font-medium">Earlier decisions</h2>
+        <ul class="divide-y divide-hairline text-sm">
+          {% for decision in history %}
+            <li class="py-3">
+              <span class="block font-medium">
+                Attempt {{ decision.attempt }}: {{ decision.get_state_display }}
+              </span>
+              <span class="block text-content-subtle">{{ decision.decided_at|date:"j M Y" }}</span>
+              {% if decision.reason %}<span class="mt-1 block break-words">{{ decision.reason }}</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

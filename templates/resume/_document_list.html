@@ -1,0 +1,122 @@
+{% comment %}
+The candidate's CVs, re-rendered after every document-level action
+(docs/CV-Lifecycle.md).
+
+Three groups, because they are three different promises:
+  * Saved CVs: kept until the candidate archives or deletes them.
+  * Unsaved drafts: opened or generated and never saved. They expire if left
+    alone, and each says when.
+  * Archived: put away, never expired, restorable.
+Deleting asks first, and a CV that was never saved is removed completely.
+{% endcomment %}
+{% url 'resume:document_act' as act %}
+<div id="document-list" class="stack">
+  {% include "resume/_flash.html" %}
+
+  <section aria-labelledby="saved-cvs">
+    <div class="stack-head">
+      <h2 id="saved-cvs" class="stack-title">Your saved CVs</h2>
+      <p class="text-meta text-content-subtle">{{ documents|length }} saved</p>
+    </div>
+    <ul class="mt-4 space-y-3">
+      {% for document in documents %}
+        <li class="card">
+          <div class="card-body flex flex-wrap items-center justify-between gap-4">
+            <div class="min-w-0">
+              <p class="font-medium">
+                <a href="{% url 'resume:editor' document_id=document.public_id %}"
+                   class="hover:underline [text-underline-offset:0.2em]">{{ document.name }}</a>
+                {% if document.is_primary %}<span class="chip chip-match ml-2">Main CV</span>{% endif %}
+              </p>
+              <p class="mt-1 text-meta text-content-muted">
+                {{ document.template.name }} ·
+                {% if document.current_version %}version {{ document.current_version.version_no }}{% else %}saved {{ document.saved_at|date:"j M Y" }}{% endif %}
+                {% if document.draft.dirty %} · edits not yet saved{% endif %}
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <a href="{% url 'resume:editor' document_id=document.public_id %}" class="btn btn-secondary btn-sm">Open</a>
+              {% if not document.is_primary %}
+                <button type="button" class="btn btn-ghost btn-sm"
+                        hx-post="{{ act }}" hx-target="#document-list" hx-swap="outerHTML"
+                        hx-vals='{"command": "make_primary", "document": "{{ document.public_id }}"}'>Make main</button>
+              {% endif %}
+              <button type="button" class="btn btn-ghost btn-sm"
+                      hx-post="{{ act }}" hx-target="#document-list" hx-swap="outerHTML"
+                      hx-vals='{"command": "duplicate", "document": "{{ document.public_id }}"}'>Duplicate</button>
+              <button type="button" class="btn btn-ghost btn-sm"
+                      hx-post="{{ act }}" hx-target="#document-list" hx-swap="outerHTML"
+                      hx-vals='{"command": "archive", "document": "{{ document.public_id }}"}'>Archive</button>
+            </div>
+          </div>
+        </li>
+      {% empty %}
+        <li class="text-content-muted">
+          No saved CVs yet. Start one below or
+          <a href="{% url 'resume:upload' %}" class="link-editorial">upload the one you have</a>.
+          A CV is saved when you choose <strong class="font-medium text-content">Save version</strong> in the editor.
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% if drafts %}
+    <section aria-labelledby="unsaved-drafts" class="mt-8">
+      <div class="stack-head">
+        <h2 id="unsaved-drafts" class="stack-title">Unsaved drafts</h2>
+        <p class="text-meta text-content-subtle">Not in your saved CVs until you save them</p>
+      </div>
+      <ul class="mt-4 space-y-3">
+        {% for document in drafts %}
+          <li class="card">
+            <div class="card-body flex flex-wrap items-center justify-between gap-4">
+              <div class="min-w-0">
+                <p class="font-medium">
+                  <a href="{% url 'resume:editor' document_id=document.public_id %}"
+                     class="hover:underline [text-underline-offset:0.2em]">{{ document.name }}</a>
+                  <span class="badge badge-neutral ml-2">Draft</span>
+                  {% if document.is_primary %}<span class="chip chip-match ml-2">Main CV</span>{% endif %}
+                </p>
+                <p class="mt-1 text-meta text-content-muted">
+                  Edited {{ document.updated_at|timesince }} ago.
+                  {% if document.expires_on %}Removed on {{ document.expires_on|date:"j M Y" }} unless you save it.{% endif %}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <a href="{% url 'resume:editor' document_id=document.public_id %}" class="btn btn-secondary btn-sm">Continue</a>
+                <button type="button" class="btn btn-ghost btn-sm"
+                        hx-post="{{ act }}" hx-target="#document-list" hx-swap="outerHTML"
+                        hx-vals='{"command": "delete", "document": "{{ document.public_id }}"}'
+                        hx-confirm="Delete the draft “{{ document.name }}”? It has never been saved, so it is removed completely."
+                        data-confirm-title="Delete this draft?" data-confirm-label="Delete draft" data-confirm-tone="danger">Delete</button>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if archived %}
+    <details class="mt-6">
+      <summary class="link-editorial cursor-pointer">Archived ({{ archived|length }})</summary>
+      <ul class="mt-3 space-y-2">
+        {% for document in archived %}
+          <li class="flex flex-wrap items-center justify-between gap-3">
+            <span class="text-content-muted">{{ document.name }}</span>
+            <span class="flex gap-3">
+              <button type="button" class="link-editorial"
+                      hx-post="{{ act }}" hx-target="#document-list" hx-swap="outerHTML"
+                      hx-vals='{"command": "restore", "document": "{{ document.public_id }}"}'>Restore</button>
+              <button type="button" class="link-editorial text-danger-fg"
+                      hx-post="{{ act }}" hx-target="#document-list" hx-swap="outerHTML"
+                      hx-vals='{"command": "delete", "document": "{{ document.public_id }}"}'
+                      hx-confirm="Delete “{{ document.name }}”? Copies already sent with an application stay with that employer."
+                      data-confirm-title="Delete this CV?" data-confirm-label="Delete CV" data-confirm-tone="danger">Delete</button>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+</div>

@@ -1,0 +1,125 @@
+{% comment %}
+Notification delivery: a grid of event × channel.
+
+Each switch saves on change rather than waiting for a Save button. A settings
+page where the changes are already made is the pattern people now expect, and
+it removes the state where the screen shows one thing and the account holds
+another.
+
+Switching something off here removes it from the notification feed as well —
+see apps/notifications/state.py. "Off" that means "collected but hidden" is
+what makes people distrust these pages.
+{% endcomment %}
+{% url 'settings:notifications_act' as act %}
+<div id="notifications-body">
+  {% include "settings/_flash.html" %}
+
+  <div class="toolbar">
+    <p class="text-meta text-content-muted">
+      {% if all_off %}
+        Everything is switched off. Nothing will reach you.
+      {% elif silent_count %}
+        {{ silent_count }} of {{ rows|length }} switched off completely.
+      {% else %}
+        All {{ rows|length }} types are reaching you somewhere.
+      {% endif %}
+    </p>
+    <div class="ml-auto flex gap-1.5">
+      <button type="button" class="btn btn-ghost btn-sm"
+              hx-post="{{ act }}" hx-vals='{"command": "all_on"}'
+              hx-target="#notifications-body" hx-swap="outerHTML">Turn all on</button>
+      <button type="button" class="btn btn-ghost btn-sm"
+              hx-post="{{ act }}" hx-vals='{"command": "all_off"}'
+              hx-target="#notifications-body" hx-swap="outerHTML">Turn all off</button>
+    </div>
+  </div>
+
+  <div class="mt-6 overflow-x-auto">
+    <table class="w-full min-w-[30rem] border-collapse text-left">
+      <caption class="sr-only">
+        Notification types and the channels each is delivered on
+      </caption>
+      <thead>
+        <tr class="border-b border-hairline">
+          <th scope="col" class="pb-2 text-meta font-medium text-content-muted">Type</th>
+          {% for channel in channels %}
+            <th scope="col" class="w-24 pb-2 text-center text-meta font-medium text-content-muted">
+              {{ channel.label }}
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr class="border-b border-hairline last:border-0">
+            <th scope="row" class="py-4 pr-6 font-normal align-top">
+              <span class="flex items-center gap-2 text-body font-medium">
+                {{ row.label }}
+                {% if row.silent %}
+                  <span class="badge badge-neutral">Off</span>
+                {% endif %}
+              </span>
+              <span class="mt-0.5 block text-meta font-normal text-content-muted">{{ row.text }}</span>
+            </th>
+            {% for channel in row.channels %}
+              <td class="py-4 text-center align-top">
+                <label class="switch">
+                  <input type="checkbox" {% if channel.on %}checked{% endif %}
+                         aria-label="{{ row.label }}: {{ channel.label }}"
+                         hx-post="{{ act }}"
+                         hx-vals='js:{command: "channel", event: "{{ row.key }}", channel: "{{ channel.key }}", on: event.target.checked}'
+                         hx-trigger="change"
+                         hx-target="#notifications-body" hx-swap="outerHTML">
+                </label>
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <section class="mt-8 border-t border-hairline pt-6" aria-labelledby="quiet-hours-title">
+    <h2 id="quiet-hours-title" class="text-body font-medium">Quiet hours</h2>
+    <p id="quiet-hours-text" class="mt-1 text-meta text-content-muted">
+      No emails are sent during these hours{% if quiet %} ({{ quiet.from }} to {{ quiet.to }}, {{ quiet.tz }}){% endif %}.
+      They are not sent afterwards either: anything that arrives still appears in your
+      notifications, and unread items are in the weekly digest if you receive it.
+    </p>
+    <form class="mt-4 flex flex-wrap items-end gap-3"
+          hx-post="{{ act }}" hx-target="#notifications-body" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="command" value="quiet_hours">
+      <div>
+        <label class="label" for="quiet-from">From</label>
+        <input class="input" id="quiet-from" name="quiet_from" type="time" required
+               value="{{ quiet.from|default:'' }}" aria-describedby="quiet-hours-text">
+      </div>
+      <div>
+        <label class="label" for="quiet-to">To</label>
+        <input class="input" id="quiet-to" name="quiet_to" type="time" required
+               value="{{ quiet.to|default:'' }}">
+      </div>
+      <button class="btn btn-secondary" type="submit">Save quiet hours</button>
+      {% if quiet %}
+        <button type="button" class="btn btn-ghost"
+                hx-post="{{ act }}" hx-vals='{"command": "quiet_clear"}'
+                hx-target="#notifications-body" hx-swap="outerHTML">Switch quiet hours off</button>
+      {% endif %}
+    </form>
+  </section>
+
+  <p class="mt-6 flex gap-2 text-meta text-content-subtle">
+    {% icon "info" css_class="mt-px size-4 shrink-0" %}
+    {% comment %}
+      This used to promise that interview times and withdrawn offers are "sent
+      regardless". They are not: interview and offer notices belong to
+      Application updates, and a switched-off group is never delivered
+      (FR-11.1). The page now says what actually happens.
+    {% endcomment %}
+    <span>
+      Interview times, offers and stage changes are part of Application updates.
+      If you switch both of its channels off, those stop reaching you too.
+    </span>
+  </p>
+</div>

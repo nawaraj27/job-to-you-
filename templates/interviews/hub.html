@@ -1,0 +1,196 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Interviews: what is booked, and somewhere to practise.
+
+Practice is offered first and prominently. It is the only part a candidate can
+start on their own, it is private (FR-10.2), and it is the thing that makes the
+real one go better — which is the whole argument for building it.
+{% endcomment %}
+
+{% block title %}Interviews — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Interviews" text="Practise on your own, and see what is booked. Practice results are yours alone; no employer sees them." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl stack">
+    {% if error %}<p class="text-meta text-danger-fg" role="status">{{ error }}</p>{% endif %}
+
+    {% if upcoming %}
+      <section class="stack">
+        <h2 class="stack-title">Coming up</h2>
+        <ul class="mt-3 space-y-3">
+          {% for session in upcoming %}
+            <li class="card">
+              <div class="card-body flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p class="text-meta font-medium">{{ session.application.job.title }}</p>
+                  <p class="text-caption text-content-subtle">
+                    {{ session.application.job.company.name }} ·
+                    {{ session.scheduled_at|date:"j M Y, H:i" }}
+                  </p>
+                </div>
+                {% comment %}
+                  The button only when the room is open. It was always shown, and
+                  for the three days before an interview it led to a page saying
+                  the room was not open yet.
+                {% endcomment %}
+                {% if session.can_join_now %}
+                  <a href="{% url 'interviews:join' public_id=session.public_id %}"
+                     class="btn btn-primary btn-sm">Join now</a>
+                {% else %}
+                  <span class="text-caption text-content-subtle">Join opens 15 minutes before</span>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="card-body">
+        <h2 class="text-body-lg">Practise</h2>
+        <p class="mt-1 text-content-muted">
+          A structured interview you can take whenever you like. Nobody is told you
+          took it, no employer can see it, and you get the same scoring an employer
+          would see, which is the point of doing it.
+        </p>
+
+        {% comment %}
+          With no templates loaded this rendered an empty picker beside a Start
+          button that 404'd — a control that looks ready and is not. Practice
+          interviews come from `seed_interview_templates`, so an installation
+          that has not run it says so instead of failing on the click.
+        {% endcomment %}
+        {% if templates %}
+          {% comment %}
+            The role comes first, because it is the field that changes what
+            happens. Choosing a job plans the interview from that posting — its
+            level, what it asks for, and what your CV says you have done — so
+            the questions are the ones that role would actually ask. Without
+            one you get general practice, which is four competencies that apply
+            to nearly any job.
+          {% endcomment %}
+          <form method="post" action="{% url 'interviews:practice' %}"
+                class="mt-5 grid gap-3 sm:grid-cols-2">
+            {% csrf_token %}
+
+            <div class="field sm:col-span-2">
+              <label class="label" for="practice-job">Which role are you practising for</label>
+              <select class="input" id="practice-job" name="job">
+                <option value="">General practice (no particular role)</option>
+                {% for job in practice_jobs %}
+                  <option value="{{ job.public_id }}">{{ job.title }} at {{ job.company.name }}</option>
+                {% endfor %}
+              </select>
+              <p class="text-caption text-content-subtle">
+                Pick one and the questions are written for it. The role is not
+                told you practised, and nothing here reaches an application.
+              </p>
+            </div>
+
+            <fieldset class="field sm:col-span-2">
+              <legend class="label">How you want to answer</legend>
+              <div class="mt-1 flex flex-wrap gap-x-6 gap-y-2">
+                <label class="flex items-center gap-2">
+                  <input type="radio" name="mode" value="text" checked> Type your answers
+                </label>
+                <label class="flex items-center gap-2">
+                  <input type="radio" name="mode" value="voice"> Answer aloud, on camera if you like
+                </label>
+              </div>
+              <p class="text-caption text-content-subtle">
+                {% if speech_available %}
+                  Spoken answers are turned into text on our server and the recording is deleted
+                  straight away. Video never leaves your device, and your face is not analysed.
+                {% else %}
+                  Speech recognition is not set up here yet: you can rehearse on camera, but you
+                  will type your answers.
+                {% endif %}
+              </p>
+            </fieldset>
+
+            <div class="field">
+              <label class="label" for="template">Style</label>
+              <select class="input" id="template" name="template">
+                {% for option in templates %}
+                  <option value="{{ option.slug }}">{{ option.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="flex items-end">
+              <button type="submit" class="btn btn-primary">Start</button>
+            </div>
+          </form>
+          {% if allowance.allowed is not None %}
+            <p class="mt-3 text-meta text-content-subtle">
+              {{ allowance.remaining }} of {{ allowance.allowed }} practice interviews left this month,
+              resetting on {{ allowance.resets_on|date:"j M Y" }}.
+              {% if not allowance.remaining %}<a href="{% url 'dashboard:plan' %}#plans" class="link-editorial">See what Pro includes</a>.{% endif %}
+            </p>
+          {% endif %}
+        {% else %}
+          <p class="mt-4 text-meta text-content-muted">
+            No practice interviews are available yet. They are being prepared, so
+            check back shortly.
+          </p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if practice %}
+      <section class="stack">
+        <h2 class="stack-title">Your practice</h2>
+        <ul class="mt-3 divide-y divide-hairline">
+          {% for session in practice %}
+            <li class="flex items-center justify-between gap-3 py-3">
+              <span>
+                <span class="text-meta">{% if session.plan.job_title %}{{ session.plan.job_title }}{% else %}{{ session.template.name }}{% endif %}</span>
+                <span class="block text-caption text-content-subtle">
+                  {{ session.created_at|date:"j M Y" }} · {{ session.get_state_display }}
+                </span>
+              </span>
+              {% comment %}
+                "Continue" went to the result page, which said the interview was
+                not finished and offered a second button to carry on.
+              {% endcomment %}
+              {% if session.state == "in_progress" %}
+                <a href="{% url 'interviews:session' public_id=session.public_id %}"
+                   class="link-editorial">Continue</a>
+              {% else %}
+                <a href="{% url 'interviews:result' public_id=session.public_id %}"
+                   class="link-editorial">See it</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if history %}
+      {% comment %}Every interview booked for an application, whatever its
+      state — so not "Interviews you have done": a booked one and one moved to
+      another time are listed here too, each with its state.{% endcomment %}
+      <section class="stack">
+        <h2 class="stack-title">Interviews for your applications</h2>
+        <ul class="mt-3 divide-y divide-hairline">
+          {% for session in history %}
+            <li class="flex items-center justify-between gap-3 py-3">
+              <span>
+                <span class="text-meta">{{ session.application.job.title }}</span>
+                <span class="block text-caption text-content-subtle">
+                  {{ session.application.job.company.name }} · {{ session.get_state_display }}
+                </span>
+              </span>
+              <a href="{% url 'interviews:result' public_id=session.public_id %}"
+                 class="link-editorial">See it</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

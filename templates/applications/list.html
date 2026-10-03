@@ -1,0 +1,94 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+One pipeline, from applied to offer.
+
+Live applications first, closed ones below and not hidden: a rejection you can
+still see is a record you can learn from, and a list that quietly drops them is
+a list that makes the last three months disappear.
+
+The status shown is the candidate-facing label. A company that marked a stage
+private gets its private name kept private (FR-6.10).
+{% endcomment %}
+
+{% block title %}Applications — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Applications" text="Everything you have sent, and what happened to it. Employers see the same timeline you do." %}
+{% endblock %}
+
+{% block app_body %}
+{% url 'jobs:list' as browse_url %}
+
+{% if total %}
+  <div class="stack">
+    <section>
+      <div class="stack-head">
+        <h2 class="stack-title">In progress</h2>
+        <span class="text-meta tabular-nums text-content-muted">{{ live|length }}</span>
+      </div>
+
+      {% if live %}
+        <ul class="rows mt-2">
+          {% for application in live %}
+            <li class="row flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3.5">
+              <div class="min-w-0">
+                <a class="text-body-lg font-medium hover:underline [text-underline-offset:0.2em]"
+                   href="{% url 'applications:detail' application.public_id %}">
+                  {{ application.job.title }}
+                </a>
+                <p class="mt-0.5 text-meta text-content-muted">
+                  {{ application.job.company.name }} ·
+                  applied {{ application.applied_at|date:"j M Y" }} ·
+                  last update {{ application.last_activity_at|timesince }} ago
+                </p>
+              </div>
+              <span class="badge badge-neutral">{{ application.candidate_status }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mt-3 text-sm text-content-muted">Nothing in progress right now.</p>
+      {% endif %}
+    </section>
+
+    {% if closed %}
+      <section>
+        <div class="stack-head">
+          <h2 class="stack-title">Closed</h2>
+          <span class="text-meta tabular-nums text-content-muted">{{ closed|length }}</span>
+        </div>
+        <ul class="rows mt-2">
+          {% for application in closed %}
+            <li class="row flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3.5">
+              <div class="min-w-0">
+                <a class="text-body-lg font-medium hover:underline [text-underline-offset:0.2em]"
+                   href="{% url 'applications:detail' application.public_id %}">
+                  {{ application.job.title }}
+                </a>
+                <p class="mt-0.5 text-meta text-content-muted">
+                  {{ application.job.company.name }} ·
+                  {% if application.withdrawn_at %}
+                    withdrawn {{ application.withdrawn_at|date:"j M Y" }}
+                  {% else %}
+                    closed {{ application.closed_at|date:"j M Y" }}
+                    {% if application.closed_reason %}· {{ application.closed_reason }}{% endif %}
+                  {% endif %}
+                </p>
+              </div>
+              <span class="badge badge-neutral">{{ application.candidate_status }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  </div>
+
+  <p class="mt-6 text-meta text-content-subtle">
+    <a class="underline [text-underline-offset:0.2em]" href="{% url 'applications:visibility' %}">
+      See which companies can view your profile
+    </a>, and why.
+  </p>
+{% else %}
+  {% include "components/empty_state.html" with icon="clipboard" title="Nothing sent yet" text="Applications you make through the platform show up here with their dates, their stage and every reply." action_label="Browse jobs" action_url=browse_url action_icon="search" %}
+{% endif %}
+{% endblock %}

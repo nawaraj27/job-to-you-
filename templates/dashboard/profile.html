@@ -1,0 +1,23 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Candidate profile.
+
+Separate from the CV on purpose: the CV is a document you send, the profile is
+what the matching engine reads and what an employer sees after you apply. The
+page says which is which, because a product that keeps two versions of your
+history without explaining it feels like a trap.
+
+The body is a partial so every edit swaps one region — almost every change also
+moves the completeness meter, and updating them separately would let the meter
+lag behind the record it describes.
+{% endcomment %}
+
+{% block title %}Profile — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Profile" text="What employers see after you apply, and what job matching reads. Your CV stays separate — this is the structured version of it." %}
+{% endblock %}
+
+{% block app_body %}
+  {% include "dashboard/_profile_body.html" %}
+{% endblock %}

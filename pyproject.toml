@@ -1,0 +1,76 @@
+[project]
+name = "careerai"
+version = "0.1.0"
+description = "AI-powered recruitment platform and applicant tracking system."
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# .claude holds editor/agent tooling, not project source.
+extend-exclude = ["*/migrations/*", "node_modules", "staticfiles", "var", ".claude"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "DJ",   # Django-specific
+    "S",    # bandit security rules
+    "C4",   # comprehensions
+    "SIM",  # simplifications
+]
+ignore = [
+    "E501",    # line length is handled by the formatter
+    "S101",    # assert: used in tests and in registry guards
+    "B008",    # function call in default argument: Django idiom
+]
+
+[tool.ruff.lint.per-file-ignores]
+"*/tests/*" = ["S105", "S106"]        # hardcoded test credentials are fine
+"config/settings/*" = ["F403", "F405"] # star imports are the settings idiom
+
+[tool.mypy]
+python_version = "3.12"
+files = ["apps"]
+plugins = ["mypy_django_plugin.main"]
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = true
+# Strictness is applied where the rules demand it (services and policies), not
+# across templates-adjacent code that gains little from annotation.
+disallow_untyped_defs = false
+# apps/*/state.py and samples.py are the session-backed frontend stand-ins,
+# deleted phase by phase as real models replace them (SRS §20).
+exclude = '(migrations|tests|state\.py|samples\.py|demo\.py)'
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[[tool.mypy.overrides]]
+module = ["apps.*.services.*", "apps.*.services", "apps.*.policies", "apps.common.*"]
+disallow_untyped_defs = true
+
+[tool.coverage.run]
+source = ["apps"]
+branch = true
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/samples.py",      # frontend mock data, deleted phase by phase
+    "*/state.py",        # session-backed stand-ins, deleted phase by phase
+    "*/apps.py",
+    "manage.py",
+]
+
+[tool.coverage.report]
+skip_covered = false
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

@@ -1,0 +1,21 @@
+{% comment %}
+Share a role.
+
+Uses the Web Share sheet where the browser has one — on a phone that is the
+native list of apps people already send links through, and reimplementing it as
+a row of brand icons would be worse in every way. Everywhere else it falls back
+to copying the URL, which is what the desktop case actually needs.
+
+No JavaScript at all still leaves a usable page: the address bar has the URL,
+and this control is an accelerator rather than the only route.
+{% endcomment %}
+<div class="mt-2" x-data="share('{{ job.title|escapejs }} at {{ job.company.name|escapejs }}')">
+  <button type="button" class="btn btn-ghost btn-block" @click="go()">
+    <template x-if="!copied">
+      <span class="contents">{% icon "link" css_class="size-4" %}<span x-text="label"></span></span>
+    </template>
+    <template x-if="copied">
+      <span class="contents text-success-fg">{% icon "check" css_class="size-4" %}Link copied</span>
+    </template>
+  </button>
+</div>

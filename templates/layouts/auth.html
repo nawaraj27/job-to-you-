@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% comment %}
+Focused layout for sign in / sign up.
+
+Site navigation is deliberately removed: the only jobs on this screen are
+"complete the form" or "go back home". Everything else is a distraction.
+{% endcomment %}
+
+{% block header %}
+  <header class="border-b border-hairline">
+    <div class="container-page flex h-16 items-center justify-between">
+      <a href="{% url 'core:home' %}" class="rounded-md" aria-label="{{ site.name }} home">
+        {% include "components/brand_mark.html" %}
+      </a>
+      {% include "partials/theme_toggle.html" %}
+    </div>
+  </header>
+{% endblock %}
+
+{% block content %}
+  <div class="container-page">
+    <div class="mx-auto flex min-h-[calc(100dvh-9rem)] max-w-md flex-col justify-center py-12">
+      {% comment %}
+        No entrance fade. The form faded in from opacity 0 over 0.45 s, so for
+        that time every heading, hint and button was below contrast — axe
+        flagged 1 to 21 elements depending on when it looked, and anyone reading
+        quickly saw the same washed-out text.
+      {% endcomment %}
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">{% block auth_title %}{% endblock %}</h1>
+        <p class="mt-2 text-sm text-content-muted">{% block auth_subtitle %}{% endblock %}</p>
+
+        <div class="mt-8">
+          {% block auth_body %}{% endblock %}
+        </div>
+
+        <p class="mt-6 text-center text-sm text-content-muted">
+          {% block auth_footer %}{% endblock %}
+        </p>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block footer %}
+  <footer class="border-t border-hairline">
+    <div class="container-page flex flex-wrap items-center justify-between gap-3 py-5">
+      <p class="text-meta text-content-subtle">&copy; {% now "Y" %} {{ site.name }}</p>
+      <div class="flex gap-4">
+        <a href="{% url 'core:privacy' %}" class="text-meta text-content-subtle hover:text-content">Privacy</a>
+        <a href="{% url 'core:terms' %}" class="text-meta text-content-subtle hover:text-content">Terms</a>
+      </div>
+    </div>
+  </footer>
+{% endblock %}

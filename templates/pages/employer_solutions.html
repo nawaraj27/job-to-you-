@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% comment %}
+Public employer page.
+
+Sells one idea: applications arrive with their reasoning attached, so screening
+starts from evidence rather than from a stack of PDFs. No metrics we cannot
+prove, no logo wall.
+{% endcomment %}
+
+{% block title %}Hiring on {{ site.name }} — for employers{% endblock %}
+{% block meta_description %}Post a role and see applicants ranked against its actual skill requirements, with the matched and missing skills shown for each one.{% endblock %}
+
+{% block content %}
+<section class="border-b border-hairline">
+  <div class="container-page py-14 md:py-20">
+    <div class="max-w-[52ch]">
+      <p class="eyebrow-rule">For employers</p>
+      <h1 class="mt-6 text-display-sm sm:text-display">Screening starts from evidence, not from a stack of PDFs.</h1>
+      <p class="lede mt-5">
+        Every application arrives scored against the skills you actually listed, with
+        the matches and the gaps named. You still read the CV; you just read it
+        already knowing what it says.
+      </p>
+      <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <a href="{% url 'employer:create' %}" class="btn btn-primary btn-lg">Create a company account</a>
+        <a href="{% url 'core:contact' %}" class="btn btn-secondary btn-lg">Talk to us first</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section border-b border-hairline bg-surface-sunken">
+  <div class="container-page">
+    <div class="max-w-[46ch]">
+      <p class="eyebrow-rule">How it works</p>
+      <h2 class="mt-6 text-display-sm">Four steps, and you own all of them.</h2>
+    </div>
+
+    <ol class="mt-12 lg:max-w-3xl">
+      <li class="step-row">
+        <span class="step-number" aria-hidden="true">01</span>
+        <div>
+          <h3 class="text-base">Post the role with its real requirements</h3>
+          <p class="mt-2 max-w-[54ch] text-body-lg leading-relaxed text-content-muted">
+            The skills you list are the skills matching uses. A vague posting produces
+            vague matches, and the form says so while you write it.
+          </p>
+        </div>
+      </li>
+      <li class="step-row">
+        <span class="step-number" aria-hidden="true">02</span>
+        <div>
+          <h3 class="text-base">Candidates see why they fit, or why they don't</h3>
+          <p class="mt-2 max-w-[54ch] text-body-lg leading-relaxed text-content-muted">
+            People who are clearly short of the requirements are told before they apply,
+            which is better for them and cuts the volume you read.
+          </p>
+        </div>
+      </li>
+      <li class="step-row">
+        <span class="step-number" aria-hidden="true">03</span>
+        <div>
+          <h3 class="text-base">Review a ranked pipeline</h3>
+          <p class="mt-2 max-w-[54ch] text-body-lg leading-relaxed text-content-muted">
+            Matched skills, missing skills, years of experience and the CV itself, in
+            one screen. Move people between stages and keep notes against them.
+          </p>
+        </div>
+      </li>
+      <li class="step-row border-b border-hairline">
+        <span class="step-number" aria-hidden="true">04</span>
+        <div>
+          <h3 class="text-base">Get verified</h3>
+          <p class="mt-2 max-w-[54ch] text-body-lg leading-relaxed text-content-muted">
+            Registration documents and a domain-matched email address. Verified
+            listings carry a badge; unverified ones say that plainly rather than
+            leaving candidates to guess.
+          </p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container-page">
+    <div class="grid gap-10 lg:grid-cols-12 lg:gap-16">
+      <div class="lg:col-span-5">
+        <h2 class="text-display-sm">What we won't do</h2>
+      </div>
+      <div class="lg:col-span-6 lg:col-start-7">
+        <dl class="divide-y divide-hairline border-y border-hairline">
+          <div class="py-6">
+            <dt class="text-lg">Rank candidates for you</dt>
+            <dd class="mt-2 max-w-[52ch] text-body-lg leading-relaxed text-content-muted">
+              Matching compares stated skills against stated requirements and shows its
+              working. It does not score people, and nothing is auto-rejected.
+            </dd>
+          </div>
+          <div class="py-6">
+            <dt class="text-lg">Sell you candidate data</dt>
+            <dd class="mt-2 max-w-[52ch] text-body-lg leading-relaxed text-content-muted">
+              You see a candidate's profile when they apply to your role. Not before,
+              and not for any other role.
+            </dd>
+          </div>
+          <div class="py-6">
+            <dt class="text-lg">Charge per posting</dt>
+            <dd class="mt-2 max-w-[52ch] text-body-lg leading-relaxed text-content-muted">
+              Pricing is per company, so how much you hire never changes what you pay.
+              <a href="{% url 'core:pricing' %}" class="underline [text-underline-offset:0.2em]">See pricing</a>.
+            </dd>
+          </div>
+        </dl>
+
+        <a href="{% url 'employer:create' %}" class="btn btn-primary btn-lg mt-8">
+          Create a company account{% icon "arrow-right" css_class="size-4.5" %}
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

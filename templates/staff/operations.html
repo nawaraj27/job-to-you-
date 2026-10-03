@@ -1,0 +1,237 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+The operations board (SRS §17, §15.3).
+
+The questions somebody actually asks at 2am, on one page, because they are
+otherwise spread across five tables and a settings file:
+
+  * is the outbox draining — §17 names the oldest unprocessed row as an alert,
+    and an outbox that has stopped is every side effect in the platform
+    stopping quietly;
+  * is work piling up on a queue — §17 names queue depth as an alert, and the
+    broker is the only place that backlog exists;
+  * are the database, the cache and private storage reachable — the same three
+    probes /readyz runs, so this board and the load balancer cannot disagree;
+  * are the retention promises being kept, and by which job;
+  * are there flags past their expiry, which is a dead branch in the source;
+  * what is AI costing today and how much of it is failing, counted from the
+    runs, plus yesterday's finished rollup beside it.
+
+Read-only on purpose. Acting during an incident belongs on the screen that owns
+the thing being acted on, with its audit trail.
+{% endcomment %}
+
+{% block title %}Operations - staff{% endblock %}
+{% block page_heading %}Operations{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    What is running, what is late, and what the platform has promised to delete.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  {% include "staff/_tabs.html" %}
+
+  <section class="stack">
+    <div class="stack-head"><h2 class="stack-title">Right now</h2></div>
+    <dl class="mt-3 grid gap-4 sm:grid-cols-3">
+      <div class="card card-body">
+        <dt class="overline">Outbox waiting</dt>
+        <dd class="mt-1 text-display tabular-nums">{{ outbox_pending }}</dd>
+        <dd class="text-caption text-content-subtle">
+          {% if outbox_oldest %}Oldest: {{ outbox_oldest|timesince }} old{% else %}Nothing waiting{% endif %}
+        </dd>
+      </div>
+      <div class="card card-body">
+        <dt class="overline">Erasures scheduled</dt>
+        <dd class="mt-1 text-display tabular-nums">{{ erasures_pending }}</dd>
+        <dd class="text-caption text-content-subtle">Inside the 14-day grace period.</dd>
+      </div>
+      <div class="card card-body">
+        <dt class="overline">Flags past expiry</dt>
+        <dd class="mt-1 text-display tabular-nums">{{ expired_flags|length }}</dd>
+        <dd class="text-caption text-content-subtle">
+          {% if expired_flags %}{{ expired_flags|join:", " }}{% else %}None{% endif %}
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+  {% if tools %}
+    <nav class="mt-8" aria-label="Platform tools">
+      <ul class="flex flex-wrap gap-2">
+        {% for label, url in tools %}
+          <li><a href="{{ url }}" class="btn btn-secondary btn-sm">{{ label }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+  {% endif %}
+
+  <section class="stack mt-12">
+    <div class="stack-head"><h2 class="stack-title">Dependencies</h2></div>
+    <p class="mt-2 text-content-muted">
+      The three checks <code class="text-caption">/readyz</code> runs. A load
+      balancer reads that endpoint; this is the same answer in words.
+    </p>
+    <ul class="mt-3 space-y-2">
+      {% for check in dependencies %}
+        <li class="flex flex-wrap items-center justify-between gap-3">
+          <span class="text-meta font-medium">{{ check.label }}</span>
+          {% if check.status == "ok" %}
+            <span class="badge badge-positive">Reachable</span>
+          {% else %}
+            <span class="badge badge-critical">{{ check.status }}</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="stack mt-12">
+    <div class="stack-head"><h2 class="stack-title">Reference data</h2></div>
+    <p class="mt-2 text-content-muted">
+      Seeded on a new database. A missing one fails far from its cause.
+    </p>
+    <ul class="mt-3 space-y-2">
+      {% for row in reference_data %}
+        <li class="flex flex-wrap items-center justify-between gap-3">
+          <span class="text-meta font-medium">{{ row.label }}</span>
+          {% if row.ok %}
+            <span class="text-meta tabular-nums text-content-muted">{{ row.count }}</span>
+          {% else %}
+            <span class="badge badge-critical">Missing. Run <code>{{ row.command }}</code></span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="stack mt-12">
+    <div class="stack-head"><h2 class="stack-title">Queue depth</h2></div>
+    <p class="mt-2 text-content-muted">
+      What is waiting on the broker, deepest first. The outbox count above is
+      what has not been published yet; this is what has been published and not
+      yet worked.
+    </p>
+    {% if queues.available %}
+      <div class="mt-4 overflow-x-auto">
+        <table class="table">
+          <thead><tr><th>Queue</th><th>Waiting</th></tr></thead>
+          <tbody>
+            {% for name, depth in queues.depths.items %}
+              <tr>
+                <td><code class="text-caption">{{ name }}</code></td>
+                <td class="tabular-nums">{{ depth }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="mt-3 text-content-muted">
+        The broker could not be reached ({{ queues.error }}), so nothing is
+        being worked at all. That is the finding.
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="stack mt-12">
+    <div class="stack-head"><h2 class="stack-title">Retention</h2></div>
+    <p class="mt-2 text-content-muted">
+      Every promise in §15.3, and the job that keeps it. A row with no job would
+      be a promise on a privacy page and nothing else.
+    </p>
+    <div class="mt-4 overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Data</th><th>Kept for</th><th>Job</th><th>Note</th></tr></thead>
+        <tbody>
+          {% for rule in retention %}
+            <tr>
+              <td>{{ rule.label }}</td>
+              <td class="tabular-nums whitespace-nowrap">
+                {% if rule.days < 1 %}{{ rule.days|floatformat:2 }} days{% else %}{{ rule.days|floatformat:0 }} day{{ rule.days|pluralize }}{% endif %}
+              </td>
+              <td><code class="text-caption">{{ rule.task }}</code></td>
+              <td class="text-content-muted">{{ rule.note }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="stack mt-12">
+    <div class="stack-head">
+      <h2 class="stack-title">AI today</h2>
+      <p class="stack-note">Since {{ ai_today.since|date:"j M Y, H:i" }}. A day still happening.</p>
+    </div>
+    <p class="mt-2 text-content-muted">
+      Counted from the runs rather than the rollup, because the rollup is
+      written at 01:10 for the day that has finished, so during an incident this
+      afternoon it holds yesterday and nothing else.
+    </p>
+    <dl class="mt-3 grid gap-4 sm:grid-cols-3">
+      <div class="card card-body">
+        <dt class="overline">Runs</dt>
+        <dd class="mt-1 text-display tabular-nums">{{ ai_today.runs }}</dd>
+      </div>
+      <div class="card card-body">
+        <dt class="overline">Failed</dt>
+        <dd class="mt-1 text-display tabular-nums">{{ ai_today.failures }}</dd>
+        <dd class="text-caption text-content-subtle">
+          {% widthratio ai_today.failures ai_today.runs 100 %}% of runs
+        </dd>
+      </div>
+      <div class="card card-body">
+        <dt class="overline">Spend</dt>
+        <dd class="mt-1 text-display tabular-nums">{{ ai_today.cost }}</dd>
+      </div>
+    </dl>
+    {% if ai_today.rows %}
+      <div class="mt-4 overflow-x-auto">
+        <table class="table">
+          <thead><tr><th>Task</th><th>Runs</th><th>Failures</th><th>Cached</th><th>Cost</th></tr></thead>
+          <tbody>
+            {% for row in ai_today.rows %}
+              <tr>
+                <td><code class="text-caption">{{ row.task_key }}</code></td>
+                <td class="tabular-nums">{{ row.runs }}</td>
+                <td class="tabular-nums">{{ row.failures }}</td>
+                <td class="tabular-nums">{{ row.cached }}</td>
+                <td class="tabular-nums">{{ row.cost }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="mt-3 text-content-muted">No AI runs yet today.</p>
+    {% endif %}
+  </section>
+
+  <section class="stack mt-12">
+    <div class="stack-head"><h2 class="stack-title">AI cost yesterday</h2></div>
+    {% if ai_yesterday %}
+      <div class="mt-3 overflow-x-auto">
+        <table class="table">
+          <thead><tr><th>Task</th><th>Runs</th><th>Failures</th><th>Cached</th><th>Cost</th></tr></thead>
+          <tbody>
+            {% for row in ai_yesterday %}
+              <tr>
+                <td><code class="text-caption">{{ row.task_key }}</code></td>
+                <td class="tabular-nums">{{ row.runs }}</td>
+                <td class="tabular-nums">{{ row.failures }}</td>
+                <td class="tabular-nums">{{ row.cached }}</td>
+                <td class="tabular-nums">{{ row.cost }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="mt-3 text-content-muted">
+        No rollup for yesterday yet. It runs at 01:10.
+      </p>
+    {% endif %}
+  </section>
+{% endblock %}

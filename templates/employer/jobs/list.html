@@ -1,0 +1,74 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+Every posting this company owns.
+
+Grouped by status rather than filtered into one flat list, because the question
+an employer opens this page with is almost always "what is live right now" —
+and a draft sitting between two published roles answers a different one.
+{% endcomment %}
+
+{% block title %}Jobs - {{ company.name }}{% endblock %}
+{% block page_heading %}Jobs{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    {{ counts.published }} live, {% if counts.paused %}{{ counts.paused }} paused, {% endif %}{{ counts.drafts }} draft{{ counts.drafts|pluralize }},
+    {{ counts.closed }} closed.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    {% if can_create %}
+      <a class="btn btn-primary" href="{% url 'employer:job_create' company.slug %}">Post a job</a>
+    {% endif %}
+
+    {% comment %}
+      Status is a link set, not a dropdown: four options that each change the
+      page are four links, and a select needs a second interaction to do the
+      same thing.
+    {% endcomment %}
+    <nav class="flex flex-wrap gap-1.5" aria-label="Filter by status">
+      <a class="btn {% if not status %}btn-secondary{% else %}btn-quiet{% endif %} btn-sm"
+         href="{% url 'employer:job_list' company.slug %}">All</a>
+      {% for value, label in statuses %}
+        <a class="btn {% if value == status %}btn-secondary{% else %}btn-quiet{% endif %} btn-sm"
+           href="?status={{ value }}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+
+    <label class="ml-auto flex items-center gap-2 text-sm text-content-muted">
+      <input type="checkbox" {% if mine %}checked{% endif %}
+             onchange="location.href = this.checked ? '?mine=1' : '{% url 'employer:job_list' company.slug %}'">
+      Only mine
+    </label>
+  </div>
+
+  <ul class="divide-y divide-hairline">
+    {% for job in jobs %}
+      <li class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5">
+        <div class="min-w-0 grow">
+          <a class="text-body-lg font-medium hover:underline [text-underline-offset:0.2em]"
+             href="{% url 'employer:job_detail' company.slug job.public_id %}">{{ job.title }}</a>
+          <p class="mt-0.5 text-meta text-content-muted">
+            {{ job.get_status_display }}
+            {% if job.published_at %} · published {{ job.published_at|date:"j M Y" }}{% endif %}
+            {% if job.closes_at %} · closes {{ job.closes_at|date:"j M Y" }}{% endif %}
+            · {{ job.skill_count }} skill{{ job.skill_count|pluralize }}
+          </p>
+        </div>
+        {% comment %}
+          One self-labelling number, so there is nothing for a description list
+          to describe: the hidden "Views" label meant a screen reader read
+          "Views, 3 views". And a posting with one view said "1 views".
+        {% endcomment %}
+        <p class="shrink-0 text-meta tabular-nums text-content-muted">
+          {{ job.views_count }} view{{ job.views_count|pluralize }}
+        </p>
+      </li>
+    {% empty %}
+      <li class="py-10 text-center text-content-muted">
+        No postings yet. The first one takes about five minutes.
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

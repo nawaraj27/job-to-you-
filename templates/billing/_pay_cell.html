@@ -1,0 +1,23 @@
+{% comment %}
+The "Pay" cell of an invoice row (ADR-A58). Needs `invoice.pay_with` (gateways
+that can take it) and `invoice.open_attempt` (a payment still being confirmed),
+set by `apps.billing.services.checkout.annotate`.
+{% endcomment %}
+{% if invoice.open_attempt %}
+  <a href="{% url 'billing:attempt' invoice.open_attempt.public_id %}" class="link-editorial text-meta">Payment being confirmed</a>
+{% elif invoice.pay_with %}
+  <div class="flex flex-wrap gap-2">
+    {% for gateway in invoice.pay_with %}
+      <form method="post" action="{% url 'billing:pay' invoice.number %}">
+        {% csrf_token %}
+        <input type="hidden" name="gateway" value="{{ gateway.key }}">
+        <button type="submit" class="btn btn-secondary btn-sm whitespace-nowrap"
+                aria-label="Pay invoice {{ invoice.number }} with {{ gateway.label }}"><span class="hidden sm:inline">Pay with </span>{{ gateway.label }}</button>
+      </form>
+    {% endfor %}
+  </div>
+{% elif invoice.state == "open" %}
+  <span class="text-meta text-content-subtle">By bank transfer</span>
+{% else %}
+  <span class="text-meta text-content-subtle">—</span>
+{% endif %}

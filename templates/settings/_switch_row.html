@@ -1,0 +1,29 @@
+{% comment %}
+One boolean setting: label and consequence on the left, a switch on the right.
+
+  {% include "settings/_switch_row.html" with act=act target="#privacy-body" key="show_salary" on=prefs.privacy.show_salary label="…" text="…" %}
+
+`disabled` takes a reason, not a boolean — a control that is greyed out without
+saying why is worse than one that isn't there. Pass the sentence and it renders
+in place of the switch's explanation.
+{% endcomment %}
+<div class="setting">
+  <div class="min-w-0">
+    <p class="font-medium">{{ label }}</p>
+    <p class="mt-0.5 text-meta text-content-muted">{{ text }}</p>
+    {% if disabled %}
+      <p class="mt-1.5 flex gap-1.5 text-meta text-content-subtle">
+        {% icon "info" css_class="mt-px size-3.5 shrink-0" %}<span>{{ disabled }}</span>
+      </p>
+    {% endif %}
+  </div>
+
+  <label class="switch mt-0.5{% if disabled %} pointer-events-none opacity-45{% endif %}">
+    <input type="checkbox" {% if on %}checked{% endif %} {% if disabled %}disabled{% endif %}
+           aria-label="{{ label }}"
+           hx-post="{{ act }}"
+           hx-vals='{"command": "toggle", "key": "{{ key }}"}'
+           hx-trigger="change"
+           hx-target="{{ target }}" hx-swap="outerHTML">
+  </label>
+</div>

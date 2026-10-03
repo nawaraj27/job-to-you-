@@ -1,0 +1,174 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Company verification review (SRS §19.5, ADR-A5).
+
+Claim before deciding, so two reviewers never work the same submission — and
+the claim expires, because a reviewer who closes the tab must not remove an
+item from the queue permanently. The service refuses a decision from anyone
+who does not hold the live claim; the page only stops offering it.
+
+A reason is required to ask for more information or to reject: the company has
+to know what to do next, and "rejected" with no sentence attached is a support
+ticket the platform wrote for itself.
+
+Documents open through a staff route that writes the file's access log and an
+audit row before serving them.
+
+Decision D-04: a reviewer who is a member of the company, holds a pending
+invitation to it, or sent the submission is shown why and is not offered the
+claim; another reviewer takes it. Decision D-02: an item that is a new attempt
+after a rejection says so, with the earlier decisions beside it.
+{% endcomment %}
+
+{% block title %}Verification queue - staff{% endblock %}
+{% block page_heading %}Verification queue{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    Claim an item before you review it. Claims expire after 45 minutes.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  {% include "staff/_tabs.html" %}
+
+  <section class="stack">
+    <div class="stack-head"><h2 class="stack-title">Waiting ({{ pending|length }})</h2></div>
+
+    {% if not pending %}
+      <p class="mt-3 text-content-muted">Nothing waiting. The queue is empty.</p>
+    {% endif %}
+
+    <div class="mt-4 stack">
+      {% for row in pending %}
+        {% with docs=row.documents.all %}
+        <div class="card"><div class="card-body">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
+              <h3 class="text-body-lg font-medium">{{ row.company.name }}</h3>
+              <p class="break-all text-caption text-content-subtle">
+                {% if row.attempt > 1 %}Attempt {{ row.attempt }} · {% endif %}Submitted {{ row.submitted_at|date:"j M Y, H:i" }} ·
+                {{ docs|length }} document{{ docs|length|pluralize }}
+                {% if row.company.legal_name %} · {{ row.company.legal_name }}{% endif %}
+                {% if row.company.website %} · {{ row.company.website }}{% endif %}
+                {% with proven=row.company.proven_domains|first %}
+                  {% if proven %} · domain {{ proven.domain }} proven by work email{% else %} · domain not proven{% endif %}
+                {% endwith %}
+              </p>
+            </div>
+
+            {% if row.is_claimed %}
+              <span class="badge">Claimed by {{ row.claimed_by.get_full_name|default:"a reviewer" }}
+                until {{ row.claimed_until|date:"H:i" }}</span>
+            {% endif %}
+          </div>
+
+          {% with history=row.decisions.all %}
+            {% if history %}
+              <div class="mt-3 text-sm">
+                <p class="font-medium">Earlier decisions</p>
+                <ul class="mt-1 space-y-1">
+                  {% for decision in history %}
+                    <li class="break-words text-content-muted">
+                      Attempt {{ decision.attempt }}: {{ decision.get_state_display }}
+                      on {{ decision.decided_at|date:"j M Y" }}
+                      by {{ decision.reviewed_by.get_full_name|default:"a reviewer" }}{% if decision.reason %}: {{ decision.reason }}{% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          <ul class="mt-3 space-y-1 text-sm">
+            {% for document in docs %}
+              <li class="break-all">
+                {% if document.attachment.is_servable %}
+                  <a class="underline" href="{% url 'staff:verification_document' document.pk %}">{{ document.label }}: {{ document.attachment.filename }}</a>
+                {% else %}
+                  {{ document.label }}: {{ document.attachment.filename }}
+                  <span class="text-content-subtle">(cannot be opened: {{ document.attachment.get_scan_status_display|lower }})</span>
+                {% endif %}
+              </li>
+            {% empty %}
+              <li class="text-content-subtle">No documents attached.</li>
+            {% endfor %}
+          </ul>
+
+          {% if row.missing_documents %}
+            <p class="mt-2 text-sm text-warning-fg">
+              Not sent:
+              {% for label in row.missing_documents %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+              Ask for it with "More information needed". That keeps this as attempt {{ row.attempt }}.
+            </p>
+          {% endif %}
+
+          {% if row.conflict %}
+            <p class="alert alert-warning mt-4">
+              You cannot review this company: {{ row.conflict }}. Another reviewer needs to take it.
+            </p>
+          {% elif row.is_claimed and row.claimed_by_id == request.user.pk %}
+            <form method="post" class="mt-5 space-y-2">
+              {% csrf_token %}
+              <input type="hidden" name="company" value="{{ row.company.slug }}">
+              <input type="hidden" name="action" value="decide">
+
+              <div class="field">
+                <label class="label" for="reason-{{ row.pk }}">Reason (required to reject or ask for more)</label>
+                <textarea id="reason-{{ row.pk }}" name="reason" class="input" rows="2"
+                          placeholder="What the company needs to do next."></textarea>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                {% for value, label in states %}
+                  <button type="submit" name="decision" value="{{ value }}"
+                          class="btn {% if value == 'verified' %}btn-primary{% else %}btn-secondary{% endif %}">
+                    {{ label }}
+                  </button>
+                {% endfor %}
+              </div>
+            </form>
+
+            <form method="post" class="mt-3">
+              {% csrf_token %}
+              <input type="hidden" name="company" value="{{ row.company.slug }}">
+              <button type="submit" name="action" value="release" class="btn btn-ghost">
+                Put back on the queue
+              </button>
+            </form>
+          {% elif not row.is_claimed %}
+            <form method="post" class="mt-4">
+              {% csrf_token %}
+              <input type="hidden" name="company" value="{{ row.company.slug }}">
+              <button type="submit" name="action" value="claim" class="btn btn-primary">
+                Claim and review<span class="sr-only"> {{ row.company.name }}</span>
+              </button>
+            </form>
+          {% endif %}
+        </div></div>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if recent %}
+    <section class="stack mt-12">
+      <div class="stack-head"><h2 class="stack-title">Recently reviewed</h2></div>
+      <div class="mt-3 overflow-x-auto">
+        <table class="table">
+          <thead><tr><th>Company</th><th>Attempt</th><th>Outcome</th><th>Reviewer</th><th>When</th></tr></thead>
+          <tbody>
+            {% for row in recent %}
+              <tr>
+                <td>{{ row.verification.company.name }}</td>
+                <td class="tabular-nums">{{ row.attempt }}</td>
+                <td>{{ row.get_state_display }}</td>
+                <td>{{ row.reviewed_by.get_full_name|default:"—" }}</td>
+                <td>{{ row.decided_at|date:"j M Y, H:i" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

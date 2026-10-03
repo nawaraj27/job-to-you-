@@ -1,0 +1,20 @@
+{% comment %}
+Result of the last save, shown where the save happened.
+
+Errors persist; confirmations are quiet — the live region has already spoken,
+and a green banner that stays on screen after every switch turns a settings
+page into a scoreboard.
+{% endcomment %}
+{% if flash_error %}
+  <div class="alert alert-error mb-6" role="alert">
+    <span class="mt-px shrink-0 text-danger-fg">{% icon "error" css_class="size-5" %}</span>
+    <div>
+      <p class="alert-title">Not saved</p>
+      <p class="mt-0.5 text-content-muted">{{ flash_error }}</p>
+    </div>
+  </div>
+{% elif flash_message %}
+  <p class="mb-6 flex items-center gap-2 text-meta text-success-fg">
+    {% icon "check-circle" css_class="size-4" %}{{ flash_message }}
+  </p>
+{% endif %}

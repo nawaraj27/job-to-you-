@@ -1,0 +1,68 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Assisted CV: the conversation (docs/Assisted-CV.md).
+
+The order on the page is the order of the work, and the conversation is the
+work:
+
+  1. **Talk it through** (the primary panel): the candidate describes what
+     they did; the assistant asks only for what is missing and drafts lines
+     only from the answers. Answers run in the background
+     (`services.improvements`); the job panel shows the stage, survives a
+     refresh and offers a retry.
+  2. **Review and edit**: drafted lines arrive under Suggestions in the editor
+     region, beside the live preview. Nothing reaches the CV until accepted,
+     and the CV is kept only when they save a version (docs/CV-Lifecycle.md).
+  3. **Improve against your analysis** (secondary, expandable): the analysis
+     findings split into rewordings the assistant can draft and facts only
+     the candidate can supply.
+{% endcomment %}
+
+{% block title %}Assisted CV — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Assisted CV" text="Describe your work in your own words. The assistant asks about anything missing and drafts CV lines only from your answers. You review every line before it goes in." %}
+{% endblock %}
+
+{% block app_body %}
+  {% include "resume/_example_notice.html" %}
+  {% if request.GET.aimed %}
+    <div class="mb-6">
+      {% include "components/alert.html" with level="info" title="Working on the gaps for your target job" text="Say where you have used each skill the job asks for. The assistant asks about one gap at a time and drafts lines only from what you tell it. Nothing is added to your CV until you accept it." %}
+    </div>
+  {% endif %}
+  <div class="stack">
+    <section class="assist-composer reveal max-w-3xl" aria-labelledby="conversation-title">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="conversation-title" class="text-title font-semibold">Talk it through</h2>
+        <p class="text-meta text-content-subtle">Step 1 of 2</p>
+      </div>
+      <p class="mt-1 text-meta text-content-muted">
+        Start with your most recent job: where it was, what you did, and what came of it.
+        If you don't remember a number, say so; the assistant won't keep asking.
+      </p>
+      <div class="mt-4 space-y-4">
+        {% include "resume/_transcript.html" %}
+        {% include "resume/_improvement_job.html" %}
+      </div>
+    </section>
+
+    <section aria-labelledby="review-title">
+      <div class="stack-head">
+        <h2 id="review-title" class="stack-title">Review and edit your CV</h2>
+        <p class="stack-note">Step 2 of 2 · Drafted lines appear under Suggestions. Nothing reaches your CV until you accept it; save a version to keep the CV.</p>
+      </div>
+      <div class="mt-4">{% include "resume/_editor_live.html" %}</div>
+    </section>
+
+    <details class="card" {% if request.GET.aimed or improve_open %}open{% endif %}>
+      <summary class="card-body flex cursor-pointer items-center justify-between gap-3 font-medium">
+        <span>Improve against your latest analysis</span>
+        <span class="text-meta font-normal text-content-subtle">Optional</span>
+      </summary>
+      <div class="card-body pt-0">
+        {% include "resume/_improvement_plan.html" %}
+      </div>
+    </details>
+  </div>
+{% endblock %}

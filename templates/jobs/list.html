@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% comment %}
+Job discovery, open to anyone — no CV, no account.
+
+Search results are a list, not a grid of cards: the eye scans one left edge
+down the page, and a grid asks it to zig-zag. Filters live in a persistent rail
+on desktop and behind one button on mobile, where a permanent rail would eat
+the screen the results need.
+{% endcomment %}
+
+{% block title %}Browse jobs — {{ site.name }}{% endblock %}
+{% block meta_description %}Open roles across engineering, data, design, finance and operations, with salary and required skills shown up front.{% endblock %}
+
+{% block content %}
+<div class="container-page">
+
+  <div class="app-head">
+    <h1 class="app-title">Browse jobs</h1>
+    <p class="mt-2 max-w-[58ch] text-body-lg leading-relaxed text-content-muted">
+      Every open role on the platform. Salary, work type and required skills are on
+      the listing, so you can rule a job out before you read it.
+    </p>
+  </div>
+
+  {% comment %}
+    Search and filtering swap only the results region over HTMX. A full-page
+    reload was costing the filter rail's open groups and the scroll position on
+    every refinement — and a refinement is something people do five or six
+    times in a row. `hx-push-url` keeps the address bar honest, so a filtered
+    search is still something you can bookmark or send to someone.
+
+    "/" focuses the search box — the shortcut every search-first product
+    shares. It is ignored while typing so it cannot swallow a slash mid-word.
+  {% endcomment %}
+  <div x-data="dialog">
+    {% comment %}
+      The "/" shortcut is its own component, nested rather than merged: the
+      filter dialog and a keyboard shortcut are unrelated concerns, and the CSP
+      build needs each expression to belong to the data object it names.
+    {% endcomment %}
+    <div x-data="searchShortcut('job-search')" @keydown.window="onKey($event)"></div>
+    <form method="get" class="toolbar"
+          hx-get="{% url 'jobs:list' %}"
+          hx-target="#job-results .loading-content"
+          hx-swap="innerHTML"
+          hx-push-url="true"
+          hx-indicator="#job-results"
+          hx-disabled-elt="find button[type=submit]">
+      <label for="job-search" class="sr-only">Search job titles, skills or companies</label>
+      <div class="search-field">
+        {% icon "search" css_class="size-4.5" %}
+        <input id="job-search" type="search" name="q" value="{{ query }}" class="input"
+               placeholder="Job title, skill or company">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-sm">Search</button>
+
+      <button type="button" class="filter-btn lg:hidden" @click="open()"
+              aria-haspopup="dialog" :aria-expanded="isOpen ? 'true' : 'false'"
+              aria-controls="filter-sheet">
+        {% icon "sliders" css_class="size-4" %}Filters
+      </button>
+
+      {% comment %}
+        Sorting applies on change — unlike the filters, which wait for an
+        explicit Apply. The difference is deliberate: sorting is one decision
+        with an immediately visible result, while filtering is usually three or
+        four decisions in a row, and a list that reflows between each one is
+        unusable.
+      {% endcomment %}
+      <div class="ml-auto flex items-center gap-2">
+        <label for="job-sort" class="sr-only text-meta text-content-muted sm:not-sr-only">Sort</label>
+        <select id="job-sort" name="sort" class="select w-auto py-1.5 text-meta"
+                hx-get="{% url 'jobs:list' %}"
+                hx-include="closest form"
+                hx-target="#job-results .loading-content"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+                hx-indicator="#job-results"
+                hx-trigger="change">
+          {% for value, label in sorts %}
+            <option value="{{ value }}" {% if value == sort %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+
+    <div class="grid gap-10 py-6 lg:grid-cols-[15rem_1fr] lg:gap-12">
+
+      {# --- Filter rail (desktop) --- #}
+      <aside class="hidden lg:block">
+        <div class="sticky top-24">
+          <h2 class="mb-3 overline">Narrow results</h2>
+          {% include "jobs/_filters.html" with scope="rail" %}
+        </div>
+      </aside>
+
+      {% comment %}
+        Filters as a bottom sheet, not a full-screen page: the results stay
+        visible behind it, so choosing a filter never feels like leaving the
+        search. Focus is trapped, Escape closes, and focus returns to the
+        button that opened it — see Alpine.data("dialog") in static/js/app.js.
+      {% endcomment %}
+      <div x-show="isOpen" x-cloak class="lg:hidden">
+        <div class="dialog-backdrop" @click="close()" aria-hidden="true"></div>
+        <div id="filter-sheet" x-ref="panel" tabindex="-1"
+             class="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-2xl
+                    border-t border-hairline bg-surface-raised p-5"
+             role="dialog" aria-modal="true" aria-labelledby="filter-sheet-title"
+             @keydown.escape.window="close()"
+             @keydown.tab.prevent="trap($event)"
+             @keydown.shift.tab.prevent="trap($event)">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 id="filter-sheet-title" class="text-base font-semibold">Filters</h2>
+            <button type="button" class="btn btn-ghost btn-icon" @click="close()"
+                    aria-label="Close filters">{% icon "close" css_class="size-5" %}</button>
+          </div>
+          {% include "jobs/_filters.html" with scope="sheet" %}
+        </div>
+      </div>
+
+      {# --- Results --- #}
+      <div id="job-results" class="loading-swap min-w-0" aria-live="polite">
+        <div class="loading-skeleton">
+          {% include "components/skeleton.html" with variant="rows" count=6 %}
+        </div>
+        <div class="loading-content">
+          {% include "jobs/_results.html" %}
+        </div>
+      </div>
+    </div>
+
+    {% comment %}
+      Saving a search stores its filters, not its URL: the alert that runs next
+      week has to mean what this search means today, and a querystring stops
+      meaning that the first time this screen changes.
+    {% endcomment %}
+    {% if can_save %}
+      <div x-data="{ open: false }" @open-save-search.window="open = true">
+        <div x-show="open" x-cloak>
+          <div class="dialog-backdrop" @click="open = false" aria-hidden="true"></div>
+          <div class="fixed inset-x-4 top-24 z-[70] mx-auto max-w-md rounded-xl border border-hairline
+                      bg-surface-raised p-5 shadow-lg"
+               role="dialog" aria-modal="true" aria-labelledby="save-search-title"
+               @keydown.escape.window="open = false">
+            <h2 id="save-search-title" class="text-base font-semibold">Save this search</h2>
+            <p class="mt-1.5 text-meta leading-relaxed text-content-muted">
+              We keep the filters, not the address, and can tell you when a new
+              role matches them.
+            </p>
+            <form method="post" action="{% url 'jobs:act' %}" class="mt-4 space-y-3">
+              {% csrf_token %}
+              <input type="hidden" name="command" value="save_search">
+              <input type="hidden" name="q" value="{{ query }}">
+              {% for filter_name, filter_value in search.as_mapping.items %}
+                <input type="hidden" name="{{ filter_name }}" value="{{ filter_value }}">
+              {% endfor %}
+              <label class="block">
+                <span class="text-meta font-medium">Name it</span>
+                <input type="text" name="name" required maxlength="120" class="input mt-1"
+                       placeholder="Senior Python, remote">
+              </label>
+              <label class="block">
+                <span class="text-meta font-medium">Tell me about new matches</span>
+                <select name="alert_frequency" class="select mt-1">
+                  {% for value, label in frequencies %}
+                    <option value="{{ value }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <div class="flex gap-2 pt-1">
+                <button type="submit" class="btn btn-primary btn-sm flex-1">Save search</button>
+                <button type="button" class="btn btn-ghost btn-sm" @click="open = false">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{# --- One route out, at the bottom where a browser has finished looking --- #}
+{% if features.resume %}
+<section class="border-t border-hairline bg-surface-sunken">
+  <div class="container-page py-12 md:py-16">
+    <div class="grid items-center gap-6 md:grid-cols-[1fr_auto]">
+      <div>
+        <h2 class="text-2xl">Applying with the right CV</h2>
+        <p class="mt-2 max-w-[56ch] text-body-lg leading-relaxed text-content-muted">
+          Upload yours and the builder will tell you what is missing against the roles
+          you are actually reading: which skills line up, and what to fix first.
+        </p>
+      </div>
+      <a href="{% url 'resume:upload' %}" class="btn btn-primary btn-lg justify-self-start">
+        {% icon "upload" css_class="size-4.5" %}Upload your CV
+      </a>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

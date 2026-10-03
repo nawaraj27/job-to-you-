@@ -1,0 +1,74 @@
+{% comment %}
+Mobile drawer. Same data source as the desktop nav — sections expand in place
+rather than pushing the user through a second screen.
+Rendered inside the header's Alpine scope.
+{% endcomment %}
+
+<div id="mobile-nav"
+     x-show="mobileOpen"
+     x-cloak
+     x-transition.opacity.duration.150ms
+     class="lg:hidden">
+  <div class="border-t border-hairline bg-canvas">
+    <nav class="container-page max-h-[calc(100dvh-4rem)] space-y-1 overflow-y-auto py-4"
+         aria-label="Mobile">
+
+      {% comment %}
+        Home is listed here and not on the desktop bar: there is no wordmark to
+        click once the drawer is covering it.
+      {% endcomment %}
+      <a href="{% url 'core:home' %}"
+         class="block border-b border-hairline py-3 text-body-lg font-medium"
+         {% if request.path == '/' %}aria-current="page"{% endif %}
+         @click="closeMobile()">Home</a>
+
+      {% for item in primary_nav %}
+        {% if item.children %}
+          <div x-data="disclosure()" class="border-b border-hairline last:border-0">
+            <button type="button" @click="toggle()"
+                    class="flex min-h-11 w-full items-center justify-between py-3 text-left text-body-lg font-medium"
+                    :aria-expanded="open ? 'true' : 'false'"
+                    aria-controls="mobile-group-{{ forloop.counter }}">
+              {{ item.label }}
+              {% icon "chevron-down" css_class="size-4 text-content-subtle transition-transform" %}
+            </button>
+            <div id="mobile-group-{{ forloop.counter }}" x-show="open" x-cloak
+                 x-transition.opacity.duration.150ms class="pb-2">
+              {% for child in item.children %}
+                <a href="{{ child.url }}" class="menu-item" @click="closeMobile()">
+                  {% if child.icon %}
+                    <span class="mt-0.5 text-content-subtle">{% icon child.icon css_class="size-4.5" %}</span>
+                  {% endif %}
+                  <span>
+                    <span class="block font-medium">{{ child.label }}</span>
+                    {% if child.description %}
+                      <span class="mt-0.5 block text-meta text-content-subtle">{{ child.description }}</span>
+                    {% endif %}
+                  </span>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <a href="{{ item.url }}"
+             class="block border-b border-hairline py-3 text-body-lg font-medium last:border-0"
+             {% if request.path == item.url %}aria-current="page"{% endif %}
+             @click="closeMobile()">{{ item.label }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if not user.is_authenticated %}
+        <div class="grid grid-cols-2 gap-2 pt-4">
+          <a href="{% url 'accounts:login' %}" class="btn btn-secondary">Log in</a>
+          <a href="{% url 'accounts:signup' %}" class="btn btn-primary">Sign up</a>
+        </div>
+      {% endif %}
+
+      {# The theme switch lives here below `sm`, where the header has no room. #}
+      <div class="flex items-center justify-between gap-3 border-t border-hairline pt-4 sm:hidden">
+        <span class="text-body-lg font-medium">Appearance</span>
+        {% include "partials/theme_toggle.html" %}
+      </div>
+    </nav>
+  </div>
+</div>

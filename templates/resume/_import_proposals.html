@@ -1,0 +1,74 @@
+{% comment %}
+What the reader found. Nothing here is on the profile yet (ADR-A49).
+
+Grouped by kind, because flat it was unusable. A CV with a normal skills
+section produced twenty-odd rows, each labelled with its own kind — "Skill",
+"Skill", "Skill" — under a single "Add all" that accepted every one of them at
+once. Neither end of that is a decision anybody makes: the list is too long to
+read a row at a time, and "all twenty-four" is not an answer to any of the
+questions in it. Per group, "add all eight skills" is a decision, and
+`accept_all` has taken a `kind` since it was written.
+
+Each row says which file it came from, because with two CVs on file the same
+fact can be offered from either and "why am I being asked this" has an answer.
+{% endcomment %}
+{% url 'resume:import_act' as act %}
+<section id="import-proposals" class="stack mt-10">
+  {% include "resume/_flash.html" %}
+
+  {% if proposal_groups %}
+    <div class="stack-head">
+      <h2 class="stack-title">Found in your CV</h2>
+      <button type="button" class="link-editorial"
+              hx-post="{{ act }}" hx-target="#import-proposals" hx-swap="outerHTML"
+              hx-vals='{"command": "accept_all"}'>Add everything</button>
+    </div>
+    <p class="mt-2 text-content-muted measure">
+      Nothing is added to your profile until you say so. Your profile is what job
+      matching reads. The document itself is not.
+    </p>
+
+    <div class="mt-6 space-y-8">
+      {% for group in proposal_groups %}
+        <div>
+          <div class="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-2">
+            <h3 class="text-meta font-medium">
+              {{ group.title }}
+              <span class="text-content-subtle">· {{ group.proposals|length }}</span>
+            </h3>
+            {% if group.proposals|length > 1 %}
+              <button type="button" class="link-editorial text-caption"
+                      hx-post="{{ act }}" hx-target="#import-proposals" hx-swap="outerHTML"
+                      hx-vals='{"command": "accept_all", "kind": "{{ group.kind }}"}'>
+                Add all {{ group.proposals|length }} {{ group.noun }}{{ group.proposals|length|pluralize }}
+              </button>
+            {% endif %}
+          </div>
+
+          <ul class="mt-2 divide-y divide-hairline">
+            {% for proposal in group.proposals %}
+              <li class="flex flex-wrap items-center justify-between gap-3 py-2">
+                <div class="min-w-0">
+                  <p class="font-medium">{{ proposal.label }}</p>
+                  {% if proposal.parse.upload.original_filename %}
+                    <p class="text-caption text-content-subtle">
+                      from {{ proposal.parse.upload.original_filename }}
+                    </p>
+                  {% endif %}
+                </div>
+                <div class="flex shrink-0 gap-2">
+                  <button type="button" class="btn btn-secondary btn-sm"
+                          hx-post="{{ act }}" hx-target="#import-proposals" hx-swap="outerHTML"
+                          hx-vals='{"command": "accept", "id": "{{ proposal.pk }}"}'>Add</button>
+                  <button type="button" class="btn btn-ghost btn-sm"
+                          hx-post="{{ act }}" hx-target="#import-proposals" hx-swap="outerHTML"
+                          hx-vals='{"command": "reject", "id": "{{ proposal.pk }}"}'>Skip</button>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>

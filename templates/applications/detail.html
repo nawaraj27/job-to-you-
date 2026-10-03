@@ -1,0 +1,262 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+One application, from the candidate's side.
+
+Three things are on this page that most job boards do not give anyone:
+
+  * the posting **as it read when they applied** (`job_snapshot`), not as the
+    employer has since edited it;
+  * which CV went, by version;
+  * the timeline, which is the same stream the employer reads, filtered.
+
+An offer, when there is one, is answerable here. It is theirs to answer.
+{% endcomment %}
+
+{% comment %}
+  The title is the snapshot's, not the live posting's: this page is about what
+  the candidate applied to. When the employer has since renamed the role, the
+  current name is shown as a note rather than silently substituted.
+{% endcomment %}
+{% block title %}{{ snapshot.title|default:application.job.title }} — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title=snapshot.title|default:application.job.title text=application.job.company.name %}
+{% endblock %}
+
+{% block app_body %}
+<div class="grid gap-8 lg:grid-cols-[1fr_18rem]">
+  <div class="min-w-0 space-y-8">
+
+    <section>
+      <div class="stack-head"><h2 class="stack-title">Where it stands</h2></div>
+      <p class="mt-3 flex flex-wrap items-center gap-2 text-body-lg">
+        <span class="badge badge-neutral">{{ application.candidate_status }}</span>
+        <span class="text-content-muted">
+          applied {{ application.applied_at|date:"j M Y" }}
+        </span>
+      </p>
+      {% if snapshot.title and snapshot.title != application.job.title %}
+        <p class="mt-2 text-meta text-content-subtle">
+          The employer has since renamed this posting to “{{ application.job.title }}”.
+        </p>
+      {% endif %}
+      {% if application.is_live and application.job.status != "published" %}
+        {% comment %}
+          The posting closed and the application page still said "New", with
+          nothing to show the role had stopped accepting people. The
+          application itself stays with the employer.
+        {% endcomment %}
+        <p class="mt-2 text-sm text-content-muted">
+          This posting is no longer accepting applications{% if application.job.closed_at %} (since {{ application.job.closed_at|date:"j M Y" }}){% endif %}.
+          Your application is still with {{ application.job.company.name }}.
+        </p>
+      {% endif %}
+      {% if application.closed_reason %}
+        <p class="mt-2 text-sm text-content-muted">
+          The employer gave the reason: {{ application.closed_reason }}
+        </p>
+      {% endif %}
+      {% if application.contact_revealed_at %}
+        <p class="mt-2 text-sm text-content-muted">
+          {{ application.job.company.name }} unlocked your contact details on
+          {{ application.contact_revealed_at|date:"j M Y" }}.
+        </p>
+      {% endif %}
+    </section>
+
+    {% comment %}
+      The interview, and the way into booking one.
+
+      This panel is the whole of the candidate's side of scheduling. Before it,
+      `interviews:book` was linked from nowhere at all: an employer published
+      times, moved somebody to the interview stage, and neither of them could
+      reach the screen where a time gets chosen.
+    {% endcomment %}
+    {% if interview %}
+      <section class="panel p-5">
+        <h2 class="text-lg font-semibold">Your interview</h2>
+        <p class="mt-2 text-body-lg">
+          {{ interview.scheduled_at|date:"l j F, H:i" }}
+        </p>
+        <p class="mt-1 text-meta text-content-muted">
+          {{ interview.template.name }} with {{ application.job.company.name }}.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <a href="{% url 'interviews:join' public_id=interview.public_id %}"
+             class="btn btn-primary">Join</a>
+          <a href="{% url 'interviews:book' application_id=application.public_id %}"
+             class="btn btn-secondary">Move it</a>
+        </div>
+        <p class="mt-3 text-caption text-content-subtle">
+          Joining opens shortly before the start time. Moving it frees this slot
+          for somebody else, so pick the new one in the same visit.
+        </p>
+      </section>
+
+    {% elif can_book %}
+      <section class="panel p-5">
+        <h2 class="text-lg font-semibold">Choose your interview time</h2>
+        <p class="measure mt-2 text-content-muted">
+          {{ application.job.company.name }} has opened
+          {{ open_slot_count }} time{{ open_slot_count|pluralize }} for this stage.
+          Pick whichever suits you; slots go as they are booked.
+        </p>
+        <a href="{% url 'interviews:book' application_id=application.public_id %}"
+           class="btn btn-primary mt-4">Pick a time</a>
+      </section>
+
+    {% elif awaiting_times %}
+      {% comment %}
+        Reached the interview stage with nothing to book.
+
+        This showed nothing at all: a candidate told they were at interview
+        stage, with no time, no explanation and no next step, left to decide
+        for themselves whether to chase it. Saying "nothing for you to do"
+        is the whole of the fix.
+      {% endcomment %}
+      <section class="panel p-5">
+        <h2 class="text-lg font-semibold">Your interview is being arranged</h2>
+        <p class="measure mt-2 text-content-muted">
+          {{ application.job.company.name }} has moved you to the interview stage
+          but has not opened any times yet. There is nothing for you to do; you
+          will be told as soon as there are times to pick from, and they have
+          your contact details.
+        </p>
+      </section>
+    {% endif %}
+
+    {% if offer and offer.state == "sent" %}
+      <section class="panel p-5">
+        <h2 class="text-lg font-semibold">You have an offer</h2>
+        <p class="mt-2 text-body-lg">
+          {{ offer.currency }} {{ offer.salary }} per {{ offer.period }}
+          {% if offer.start_date %}· starting {{ offer.start_date|date:"j M Y" }}{% endif %}
+        </p>
+        {% if offer.expires_at %}
+          <p class="mt-1 text-meta text-content-muted">
+            Answer by {{ offer.expires_at|date:"j M Y" }}.
+          </p>
+        {% endif %}
+        {% if offer.message %}
+          <p class="measure mt-3 whitespace-pre-line text-sm">{{ offer.message }}</p>
+        {% endif %}
+        {% if offer_document_url %}
+          <p class="mt-3 text-sm">
+            <a class="underline [text-underline-offset:0.2em]" href="{{ offer_document_url }}">Read the offer letter ({{ offer.attachment.filename }})</a>
+          </p>
+        {% endif %}
+
+        <form method="post" class="mt-4 flex flex-wrap items-end gap-3">
+          {% csrf_token %}
+          <button class="btn btn-primary" type="submit" name="action" value="accept_offer">
+            Accept
+          </button>
+          <input class="input w-64" name="reason" maxlength="200" placeholder="Reason (optional)">
+          <button class="btn btn-quiet" type="submit" name="action" value="decline_offer">
+            Decline
+          </button>
+        </form>
+      </section>
+    {% endif %}
+
+    <section>
+      <div class="stack-head"><h2 class="stack-title">What happened</h2></div>
+      <ol class="mt-4 space-y-3">
+        {% for entry in timeline %}
+          <li class="flex gap-3 text-sm">
+            <span class="mt-2 size-1.5 shrink-0 rounded-full bg-mark" aria-hidden="true"></span>
+            <span>
+              <span class="font-medium">
+                {% if entry.type == "application.submitted" %}You applied
+                {% elif entry.type == "application.stage_changed" %}Moved to {{ entry.to_stage.public_label }}
+                {% elif entry.type == "application.withdrawn" %}You withdrew
+                {% elif entry.type == "application.contact_revealed" %}Contact details unlocked
+                {% elif entry.type == "offer.sent" %}Offer sent
+                {% elif entry.type == "offer.decided" %}Offer {{ entry.payload.state }}
+                {% elif entry.type == "offer.withdrawn" %}Offer withdrawn
+                {% elif entry.type == "offer.expired" %}Offer expired
+                {% else %}{{ entry.type }}{% endif %}
+              </span>
+              <span class="ml-1.5 text-meta text-content-subtle">
+                {{ entry.created_at|date:"j M Y" }}
+              </span>
+              {% if entry.payload.message %}
+                <span class="mt-1 block text-content-muted">{{ entry.payload.message }}</span>
+              {% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    {% comment %}
+      The posting as it read on the day. This is what ADR-A23 removed the
+      `JobRevision` table in favour of: the copy lives on the row that needs it
+      and cannot drift from what was applied to.
+    {% endcomment %}
+    <section>
+      <div class="stack-head">
+        <h2 class="stack-title">The role you applied to</h2>
+        <span class="text-meta text-content-subtle">as it read that day</span>
+      </div>
+      <dl class="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+        <div>
+          <dt class="overline">Salary</dt>
+          <dd class="mt-0.5">
+            {{ snapshot_salary }}
+          </dd>
+        </div>
+        <div>
+          <dt class="overline">Location</dt>
+          <dd class="mt-0.5">{{ snapshot.location|default:"Not given" }}</dd>
+        </div>
+      </dl>
+      {% if snapshot.description %}
+        <p class="measure mt-4 whitespace-pre-line text-body leading-relaxed text-content-muted">
+          {{ snapshot.description }}
+        </p>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="space-y-4">
+    <div class="panel p-5">
+      <h2 class="text-body-lg">What you sent</h2>
+      <dl class="mt-3 space-y-2 text-meta">
+        <div class="flex justify-between gap-3">
+          <dt class="text-content-subtle">CV</dt>
+          <dd>Version {{ application.resume_version.version_no }}</dd>
+        </div>
+        <div class="flex justify-between gap-3">
+          <dt class="text-content-subtle">Cover letter</dt>
+          <dd>{% if application.cover_letter %}Yes{% else %}None{% endif %}</dd>
+        </div>
+        <div class="flex justify-between gap-3">
+          <dt class="text-content-subtle">Answers</dt>
+          <dd>{{ application.answers|length }}</dd>
+        </div>
+      </dl>
+      <p class="mt-3 text-meta text-content-subtle">
+        Frozen when you applied. Editing your CV since has not changed what they received.
+      </p>
+    </div>
+
+    {% if can_withdraw %}
+      <div class="panel p-5">
+        <h2 class="text-body-lg">Withdraw</h2>
+        <p class="mt-2 text-meta leading-relaxed text-content-muted">
+          The employer is told. You can apply again later if the role is still open.
+        </p>
+        <form method="post" class="mt-3 space-y-2">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="withdraw">
+          <label class="sr-only" for="withdraw-reason">Reason</label>
+          <input class="input" id="withdraw-reason" name="reason" maxlength="200"
+                 placeholder="Reason (optional)">
+          <button class="btn btn-secondary btn-block" type="submit">Withdraw application</button>
+        </form>
+      </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% comment %}
+A demo advertisement (`core.ads`, `{% demo_ad "slot" %}`).
+
+Sample content from a fictional advertiser, labelled as an advertisement and as
+a demo on every render. Server-rendered in the page, so it takes its space
+before first paint and nothing moves afterwards. No image from a third party
+(the logo is two letters), no script, no tracking, and "Learn more" goes to a
+page on this site that says the ad is a demonstration.
+
+"Hide" is a plain form: htmx swaps the ad out in place; without htmx the page
+reloads with it gone. Remembered in the session only.
+
+  ad (or None — renders nothing), slot, variant ("card" | "row")
+{% endcomment %}
+{% if ad %}
+  <aside id="demo-ad-{{ slot }}" class="demo-ad {% if variant == 'row' %}demo-ad-row{% endif %}"
+         aria-label="Advertisement (demo): {{ ad.advertiser }}">
+    <div class="flex items-center justify-between gap-3">
+      <p class="overline">{{ ad.label }}</p>
+      <form method="post" action="{% url 'core:demo_ad_hide' %}"
+            hx-post="{% url 'core:demo_ad_hide' %}" hx-target="#demo-ad-{{ slot }}" hx-swap="outerHTML">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+        <input type="hidden" name="key" value="{{ ad.key }}">
+        <button type="submit" class="text-caption text-content-subtle underline-offset-2 hover:text-content hover:underline"
+                aria-label="Hide this demo ad from {{ ad.advertiser }}">Hide</button>
+      </form>
+    </div>
+
+    <div class="mt-3 {% if variant == 'row' %}sm:flex sm:items-center sm:justify-between sm:gap-6{% endif %}">
+      <div class="flex min-w-0 items-start gap-3">
+        <span class="demo-ad-mark" aria-hidden="true">{{ ad.monogram }}</span>
+        <div class="min-w-0">
+          <p class="font-medium">{{ ad.advertiser }}</p>
+          <p class="mt-0.5 text-meta text-content">{{ ad.title }}</p>
+          <p class="mt-1 text-meta text-content-muted">{{ ad.text }}</p>
+        </div>
+      </div>
+      <div class="mt-3 flex items-center gap-3 {% if variant == 'row' %}sm:mt-0 sm:shrink-0{% endif %}">
+        <a href="{{ ad.url }}" class="btn btn-secondary btn-sm" rel="sponsored">{{ ad.cta }}</a>
+        <span class="text-caption text-content-subtle">Sponsored · sample content</span>
+      </div>
+    </div>
+  </aside>
+{% endif %}

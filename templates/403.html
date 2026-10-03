@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% comment %}
+Forbidden. Usually an expired session rather than a genuine permission
+problem, so signing in again is offered first — that is the fix in most cases,
+and telling someone "access denied" when they simply need to sign in reads as
+an accusation.
+{% endcomment %}
+
+{% block title %}You can't open that — {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="container-page">
+  <div class="mx-auto flex min-h-[60dvh] max-w-xl flex-col justify-center py-16">
+    <p class="overline">Error 403</p>
+    <h1 class="mt-4 text-display-sm">That page isn't open to this account.</h1>
+    <p class="lede mt-4">
+      Most often this means your session expired while the tab was open. Signing
+      in again usually fixes it. If it doesn't, the page belongs to a different
+      account type. Candidate pages and employer pages are separate.
+    </p>
+
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a href="{% url 'accounts:login' %}" class="btn btn-primary">Sign in again</a>
+      <a href="{% url 'core:home' %}" class="btn btn-secondary">Go to the home page</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

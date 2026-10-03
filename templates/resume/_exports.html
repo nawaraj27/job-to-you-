@@ -1,0 +1,49 @@
+{% comment %}
+Export controls and history.
+
+Every file here came from an immutable version, which is why the version number
+is shown next to it: "the CV I sent them" is a specific document, and this is
+where a candidate proves which one it was.
+{% endcomment %}
+{% url 'resume:export' document_id=document.public_id as export_url %}
+<div id="exports">
+  {% include "resume/_flash.html" %}
+
+  <section>
+    <div class="stack-head"><h2 class="stack-title">Export</h2></div>
+    <p class="mt-2 text-content-muted">
+      Exporting saves a version first, so the file you send always matches a record you keep.
+    </p>
+
+    <div class="mt-3 flex flex-wrap gap-2">
+      <button type="button" class="btn btn-primary btn-sm"
+              hx-post="{{ export_url }}" hx-target="#exports" hx-swap="outerHTML"
+              hx-vals='{"format": "pdf"}'>Download PDF</button>
+      <button type="button" class="btn btn-secondary btn-sm"
+              hx-post="{{ export_url }}" hx-target="#exports" hx-swap="outerHTML"
+              hx-vals='{"format": "docx"}'>Download Word</button>
+      <a href="{% url 'resume:print' document_id=document.public_id %}"
+         class="btn btn-ghost btn-sm" target="_blank" rel="noopener">Print view</a>
+    </div>
+
+    {% if exports %}
+      <ul class="mt-5 space-y-2">
+        {% for export in exports %}
+          <li class="flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-meta font-medium">
+                {{ export.get_format_display }}, version {{ export.version.version_no }}
+              </p>
+              <p class="text-caption text-content-subtle">
+                {{ export.template.name }}
+                {% if export.pages %} · {{ export.pages }} page{{ export.pages|pluralize }}{% endif %}
+                · {{ export.created_at|date:"j M Y, H:i" }}
+              </p>
+            </div>
+            <a href="{% url 'resume:download' render_id=export.pk %}" class="btn btn-ghost btn-sm">Download</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+</div>

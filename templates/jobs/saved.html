@@ -1,0 +1,127 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+The shortlist, and the searches that feed it.
+
+Two lists on one screen because they are the same intent at two speeds: roles
+someone kept, and the standing instruction that finds more of them. Splitting
+them across two pages would mean a saved search is something you set up once
+and never see again — which is how alerts become the thing people mute.
+
+Nothing here expires quietly. A closed posting stays visible and says so.
+{% endcomment %}
+
+{% block title %}Saved jobs — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Saved jobs" text="Roles you've kept to come back to, and the searches watching for more. Saved roles are private — no employer is told." %}
+{% endblock %}
+
+{% block app_body %}
+{% url 'jobs:list' as browse_url %}
+
+<div class="stack">
+  <section>
+    <div class="stack-head">
+      <h2 class="stack-title">Your shortlist</h2>
+      {% if saved %}
+        <span class="text-meta tabular-nums text-content-muted">{{ saved|length }}</span>
+      {% endif %}
+    </div>
+
+    {% if saved %}
+      <ul class="rows mt-2">
+        {% for job in saved %}
+          {% comment %}
+            A closed role keeps its place with a badge rather than vanishing:
+            dropping it silently loses the record of what someone was working
+            through, and showing it as open is worse.
+          {% endcomment %}
+          {% include "components/job_row.html" with job=job %}
+          {% if not job.is_open %}
+            <li class="row py-2 text-meta text-content-subtle">
+              {% icon "info" css_class="size-3.5" %}
+              {{ job.title }} is no longer accepting applications.
+            </li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with icon="bookmark" title="Nothing saved yet" text="Use the bookmark on any listing to keep it here while you decide." action_label="Browse jobs" action_url=browse_url action_icon="search" %}
+    {% endif %}
+  </section>
+
+  <section>
+    <div class="stack-head">
+      <h2 class="stack-title">Saved searches</h2>
+      <a href="{{ browse_url }}" class="link-editorial">New search</a>
+    </div>
+
+    {% if searches %}
+      <ul class="rows mt-2">
+        {% for search in searches %}
+          <li class="row flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-3.5">
+            <div class="min-w-0">
+              <p class="text-body-lg font-medium">{{ search.name }}</p>
+              <p class="mt-0.5 text-meta text-content-muted">
+                {% if search.last_run_at %}
+                  Last checked {{ search.last_run_at|timesince }} ago
+                {% else %}
+                  Not checked yet
+                {% endif %}
+                · {{ search.matches.count }} match{{ search.matches.count|pluralize:"es" }}
+              </p>
+            </div>
+
+            {% comment %}
+              The alert frequency is the control people actually come here to
+              change, so it is on the row rather than behind an edit screen.
+              Changing it submits — one decision, one visible result.
+            {% endcomment %}
+            <div class="flex items-center gap-2">
+              <form method="post" action="{% url 'jobs:act' %}" class="flex items-center gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="command" value="set_alert">
+                <input type="hidden" name="search_id" value="{{ search.pk }}">
+                <label class="sr-only" for="alert-{{ search.pk }}">Alert frequency for {{ search.name }}</label>
+                <select id="alert-{{ search.pk }}" name="alert_frequency"
+                        class="select w-auto py-1.5 text-meta" onchange="this.form.requestSubmit()">
+                  {% for value, label in frequencies %}
+                    <option value="{{ value }}"
+                            {% if value == search.alert_frequency %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <noscript><button type="submit" class="btn btn-secondary btn-sm">Set</button></noscript>
+              </form>
+
+              <form method="post" action="{% url 'jobs:act' %}">
+                {% csrf_token %}
+                <input type="hidden" name="command" value="delete_search">
+                <input type="hidden" name="search_id" value="{{ search.pk }}">
+                <button type="submit" class="btn btn-ghost btn-icon"
+                        aria-label="Delete saved search {{ search.name }}">
+                  {% icon "trash" css_class="size-4" %}
+                </button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with icon="bell" title="No saved searches" text="Run a search you like, then save it. We can tell you daily or weekly when a new role matches." action_label="Search jobs" action_url=browse_url action_icon="search" %}
+    {% endif %}
+  </section>
+
+  {% if matches %}
+    <section>
+      <div class="stack-head">
+        <h2 class="stack-title">New since your last alert</h2>
+      </div>
+      <ul class="rows mt-2">
+        {% for match in matches %}
+          {% include "components/job_row.html" with job=match.job %}
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% comment %}
+The confirmation dialog, once, for the whole product.
+
+Every `hx-confirm` in the app is routed here by static/js/app.js rather than
+raising the browser's own `confirm()`. Two mechanisms for the same decision was
+the problem: a native dialog opens in the operating system's chrome, in the
+operating system's type, and reads as though a different program asked.
+
+Nothing about the call sites changed — they still declare `hx-confirm` and its
+sentence. The element that triggered the request may add:
+
+  data-confirm-title    heading, default "Are you sure?"
+  data-confirm-label    the confirming button, default "Continue"
+  data-confirm-tone     "danger" for anything destructive
+
+One overlay does the dimming *and* receives the click that dismisses it. Two
+elements — a tinted layer with a transparent flex layer above it — meant the
+click landed on the layer that had no handler, and clicking outside did
+nothing.
+
+Inert until opened, so it costs nothing on pages that never confirm.
+{% endcomment %}
+<div id="app-confirm" hidden>
+  <div class="fixed inset-0 z-[60] flex items-end justify-center bg-ink-950/45 p-4 sm:items-center"
+       data-confirm-overlay>
+    <div role="alertdialog" aria-modal="true"
+         aria-labelledby="app-confirm-title"
+         aria-describedby="app-confirm-text"
+         tabindex="-1"
+         data-confirm-panel
+         class="w-full max-w-md rounded-xl border border-hairline bg-surface p-6 shadow-[var(--elevation-dialog)]">
+      <h2 id="app-confirm-title" class="text-lg" data-confirm-heading>Are you sure?</h2>
+      <p id="app-confirm-text" class="mt-2 text-content-muted" data-confirm-message></p>
+
+      <div class="mt-6 flex flex-wrap justify-end gap-2">
+        <button type="button" class="btn btn-secondary" data-confirm-cancel>Cancel</button>
+        <button type="button" class="btn btn-primary" data-confirm-accept>Continue</button>
+      </div>
+    </div>
+  </div>
+</div>

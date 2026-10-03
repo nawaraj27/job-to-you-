@@ -1,0 +1,145 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+One question at a time (FR-10.1, FR-10.4).
+
+Deliberately not a form with every question on it. A page showing all of them is
+a form somebody fills in with the answers open in another tab, and the time box
+means nothing — and a follow-up cannot exist, because it is written after
+reading the answer before it.
+
+The timer is honest about what it is: a shape for the interview, not a
+guillotine. Running over is recorded and never scored (§11.2).
+
+The paste and focus counters are declared on the page rather than hidden,
+because a candidate is entitled to know what is being recorded about them.
+{% endcomment %}
+
+{% block title %}Interview — {{ site.name }}{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-2xl stack"
+       x-data="interviewTurn({{ seconds }}, 'interview-draft-{{ turn.pk }}')"
+       @blur.window="blurEvents++">
+
+    <div class="flex items-baseline justify-between gap-4">
+      <p class="overline">
+        Question {{ answered|add:1 }}{% if planned %} of about {{ planned }}{% endif %}
+      </p>
+      <p class="text-caption tabular-nums" role="timer" aria-label="Suggested time left"
+         :class="seconds <= 30 ? 'text-danger-fg' : 'text-content-subtle'"
+         x-text="clock()">{{ clock }}</p>
+    </div>
+
+    {% if error %}
+      <p class="text-meta text-danger-fg" role="alert">{{ error }}</p>
+    {% endif %}
+
+    {% comment %}
+      Which interview this actually is.
+
+      A candidate picks a role from a list headed "Which role are you
+      practising for" and, the first time anybody practises against a new
+      posting, gets the four general competencies — correct behaviour, because
+      the posting's own kit is written off the request and nobody should wait
+      thirty seconds for it, and completely invisible. Somebody answering eight
+      questions that never mention the job is entitled to know why.
+    {% endcomment %}
+    {% if session.plan.job_title and not session.plan.tailored %}
+      {% comment %}Since INT-04 these are not the general questions: with no
+      written kit yet, the questions are built from the posting itself. The
+      banner used to say "General practice questions" above a question about
+      the posting's own skills.{% endcomment %}
+      <p class="text-meta text-content-muted measure">
+        Built from the
+        <span class="font-medium text-content">{{ session.plan.job_title }}</span>
+        posting — its skills, duties and requirements. A fuller set written for
+        this role is being prepared; practise again later to get it.
+      </p>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-body">
+        {% if turn.competency %}<p class="overline">{{ turn.competency_label }}</p>{% endif %}
+        {% comment %}
+          The question is the page's heading. The screen had no h1 at all, so a
+          screen-reader user arriving here heard navigation and a timer before
+          anything said what was being asked.
+        {% endcomment %}
+        <h1 class="mt-2 text-title font-normal" id="question">{{ turn.question_text }}</h1>
+        {% if turn.question_origin == "ai_followup" %}
+          <p class="mt-2 text-caption text-content-subtle">A follow-up on what you just said.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if voice %}
+      {% include "interviews/_voice_answer.html" %}
+    {% endif %}
+
+    <form method="post" class="stack" @submit="onSubmit($event)">
+      {% csrf_token %}
+      <input type="hidden" name="turn" value="{{ turn.pk }}">
+      <input type="hidden" name="integrity" :value="payload()">
+      {% if voice %}<input type="hidden" name="delivery" id="delivery-sealed" value="">{% endif %}
+
+      <div class="field">
+        <label class="label" for="answer">Your answer</label>
+        <textarea class="input min-h-48" id="answer" name="answer" rows="10" autofocus
+                  x-ref="answer" aria-describedby="question answer-hint"
+                  @paste="pastes++" @input="saveDraft"
+                  placeholder="Describe something you actually did. What was the situation, what did you do, what happened.">{{ draft }}</textarea>
+        <p class="text-caption text-content-subtle" id="answer-hint">
+          A real example works best: the situation, what you did, and what happened.
+          Your draft is kept in this browser if the page reloads.
+        </p>
+        <p class="text-caption text-content-subtle" x-show="restored" x-cloak role="status">
+          We put back the answer you had started.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button type="submit" class="btn btn-primary" :aria-disabled="submitting">
+          <span x-show="!submitting">Submit answer</span>
+          <span x-show="submitting" x-cloak>Saving and preparing the next question…</span>
+        </button>
+        <button type="submit" name="action" value="skip" class="btn btn-ghost">Skip this one</button>
+        <span class="text-caption text-content-subtle">
+          The timer shapes the interview; running over is not counted against you.
+        </span>
+        <span class="sr-only" role="status" x-text="submitting ? 'Answer saved. Preparing the next question.' : ''"></span>
+      </div>
+    </form>
+
+    {% comment %}
+      Stopping was one link that discarded the interview on click: no outcome,
+      nothing scored, and no way back — right next to "Skip this one". It is a
+      disclosure now, and the choice it opens is the one somebody stopping
+      actually has: be scored on what they have answered, or throw it away.
+    {% endcomment %}
+    <details class="text-caption">
+      <summary class="link-editorial cursor-pointer">Stop the interview</summary>
+      <div class="mt-3 stack">
+        {% if answered %}
+          <form method="post" action="{% url 'interviews:finish' public_id=session.public_id %}">
+            {% csrf_token %}
+            <button type="submit" name="action" value="finish" class="btn btn-secondary btn-sm">
+              Finish now and get feedback on {{ answered }} answer{{ answered|pluralize }}
+            </button>
+          </form>
+        {% endif %}
+        <form method="post" action="{% url 'interviews:finish' public_id=session.public_id %}">
+          {% csrf_token %}
+          <button type="submit" name="action" value="abandon" class="btn btn-ghost btn-sm">
+            Discard this interview
+          </button>
+          <p class="mt-1 text-content-subtle">Nothing is scored, and it cannot be resumed.</p>
+        </form>
+      </div>
+    </details>
+
+    <p class="text-caption text-content-subtle">
+      We record how many times you paste and how often the tab loses focus, and show
+      it to the employer as context. It is never part of your score.
+    </p>
+  </div>
+{% endblock %}

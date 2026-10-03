@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Shared chrome for the five settings screens: a title, and a tab strip.
+
+Five pages rather than one long form. Settings are looked up, not read through
+— someone arrives wanting to switch off one email, and a single scrolling page
+makes them hunt for it. Splitting also means a save touches one screen's worth
+of state, so a mistake is small and obvious.
+
+Children fill {% block settings_body %}.
+{% endcomment %}
+
+{% block title %}{{ page_title }} — Settings — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title=page_title text=page_text %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl">
+    <nav class="tabs mb-8" aria-label="Settings sections">
+      {% for tab in settings_tabs %}
+        <a href="{{ tab.url }}" class="tab"
+           {% if tab.current %}aria-current="page"{% endif %}>{{ tab.label }}</a>
+      {% endfor %}
+    </nav>
+
+    {% block settings_body %}{% endblock %}
+  </div>
+{% endblock %}

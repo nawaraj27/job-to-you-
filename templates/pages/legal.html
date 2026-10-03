@@ -1,0 +1,40 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+A legal page (SRS §5.14).
+
+The body comes from the `LegalDocument` version in force, not from this file.
+Two consequences worth stating, because both were defects before P19:
+
+  * the "last updated" date is the version's `effective_from`, not
+    `{% now %}` — a page that dates itself by the clock tells the reader
+    something false on every load;
+  * the draft banner is `is_draft` on the row, so publishing a reviewed 1.0 is
+    what removes it, rather than somebody remembering to delete an include.
+
+`|safe` is deliberate and narrow: the body is staff-authored HTML published
+through a service, never user input, and the only way a string reaches this
+template is a `LegalDocument` row.
+{% endcomment %}
+
+{% block title %}{{ page_title }} — {{ site.name }}{% endblock %}
+{% block page_heading %}{{ page_title }}{% endblock %}
+{% block page_intro %}
+  {% if document %}
+    <p class="mt-4 max-w-2xl text-body-lg leading-relaxed text-content-muted">
+      Version {{ document.version }}, in force since {{ document.effective_from|date:"j F Y" }}.
+    </p>
+  {% endif %}
+{% endblock %}
+
+{% block page_body %}
+  <div class="prose-page">
+    {% if not document %}
+      {% include "components/alert.html" with level="warning" title="Not published" text="This document has not been published yet. Run manage.py seed_legal." %}
+    {% else %}
+      {% if document.is_draft %}
+        {% include "components/alert.html" with level="warning" title="Draft" text="This text describes what the platform does today and has not yet been reviewed by a lawyer." %}
+      {% endif %}
+      {{ document.body|safe }}
+    {% endif %}
+  </div>
+{% endblock %}

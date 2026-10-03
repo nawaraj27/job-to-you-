@@ -1,0 +1,24 @@
+{% extends "layouts/auth.html" %}
+
+{% block title %}Two-factor code — {{ site.name }}{% endblock %}
+{% block auth_title %}Enter your code{% endblock %}
+{% block auth_subtitle %}Open your authenticator app, or use one of your recovery codes.{% endblock %}
+
+{% block auth_body %}
+  <form method="post" class="space-y-4" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="mfa-code" class="label">Code</label>
+      <input id="mfa-code" name="code" class="input tabular-nums" inputmode="text"
+             autocomplete="one-time-code" required autofocus maxlength="20"
+             aria-describedby="mfa-code-hint">
+      <p id="mfa-code-hint" class="hint">Six digits from the app, or a ten-character recovery code.</p>
+    </div>
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <button type="submit" class="btn btn-primary btn-block btn-lg">Continue</button>
+  </form>
+{% endblock %}
+
+{% block auth_footer %}
+  Not you? <a href="{% url 'accounts:login' %}" class="font-medium text-accent-content hover:underline">Sign in again</a>
+{% endblock %}

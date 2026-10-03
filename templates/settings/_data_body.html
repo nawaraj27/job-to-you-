@@ -1,0 +1,165 @@
+{% comment %}
+Your data: take a copy, or close the account.
+
+The export is a real file assembled from the same state the screens read, so it
+cannot describe an account different from the one on screen. The counts are
+computed the same way, which is why they are worth printing — a list of
+categories with no numbers tells you nothing about whether the export worked.
+
+Closing the account is guarded by typing the word, not by a second button. The
+guard has to cost more attention than the action, and a second button costs
+none.
+{% endcomment %}
+{% url 'settings:data_act' as act %}
+<div id="data-body">
+  {% include "settings/_flash.html" %}
+
+  {% if wiped %}
+    <div class="alert alert-info mb-8" role="status">
+      <span class="mt-px shrink-0 text-info-fg">{% icon "info" css_class="size-5" %}</span>
+      <div>
+        <p class="alert-title">This account is empty</p>
+        <p class="mt-0.5 text-content-muted">
+          Everything was removed. Screens that held your data now show their
+          starting state rather than someone else's sample.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+
+  <section class="stack">
+    <div class="stack-head"><h2 class="stack-title">Export</h2></div>
+    <p class="mt-2 text-content-muted">
+      One JSON file, generated when you ask for it. No queue, no email, nothing
+      to wait for.
+    </p>
+
+    <dl class="mt-5 divide-y divide-hairline border-y border-hairline">
+      {% comment %}
+        dt and dd are direct children of the group. They used to sit in an inner
+        div, which axe reports as an invalid definition list (serious) and which
+        some screen readers announce as unlabelled text.
+      {% endcomment %}
+      {% for source in sources %}
+        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
+          <dt class="min-w-0 font-medium">{{ source.label }}</dt>
+          <dd class="shrink-0 text-meta tabular-nums text-content-subtle">
+            {% with count=counts|lookup:source.key %}
+              {{ count }} {% if count == 1 %}record{% else %}records{% endif %}
+            {% endwith %}
+          </dd>
+          <dd class="w-full text-meta text-content-muted">{{ source.text }}</dd>
+        </div>
+      {% endfor %}
+    </dl>
+
+    <div class="mt-5 flex flex-wrap gap-2">
+      <a href="{% url 'settings:export' %}" class="btn btn-secondary" download>
+        {% icon "download" css_class="size-4.5" %}Download my data
+      </a>
+      {# Wraps rather than overflows: the longer label was 328 px on a 320 px phone. #}
+      <a href="{% url 'settings:export_archive' %}" class="btn btn-secondary h-auto max-w-full whitespace-normal" download>
+        {% icon "download" css_class="size-4.5 shrink-0" %}Download with my files (.zip)
+      </a>
+    </div>
+    <p class="mt-2 text-meta text-content-subtle">
+      The zip adds the CVs, certificates and message attachments you uploaded to the same data.
+    </p>
+  </section>
+
+  {% comment %}
+    Erasing the profile.
+
+    Two sections, and keeping them apart is the point. Until P19 this screen
+    had one, headed "Close this account", wired to a service that erases the
+    *profile* and leaves the account open — a button that meant something
+    narrower than it said, which is worse than no button. The first section now
+    says what it does; the second does what the first claimed.
+  {% endcomment %}
+  {% if has_profile %}
+  <section class="stack mt-12">
+    <div class="stack-head"><h2 class="stack-title">Erase your profile</h2></div>
+
+    <div class="mt-4 rounded-lg border border-danger/40 p-5">
+      <p class="font-medium">This empties your profile, immediately.</p>
+      <p class="mt-1.5 text-content-muted">
+        Your headline, contact details, skills, history and links. Your account
+        stays open and you can start again whenever you like. Applications
+        you've already sent stay with the employers who received them; we
+        can't withdraw those for you.
+      </p>
+      <p class="mt-3 text-meta text-content-subtle">
+        Export first if you want a copy.
+      </p>
+
+      <form class="mt-5" hx-post="{{ act }}" hx-target="#data-body" hx-swap="outerHTML">
+        <input type="hidden" name="command" value="delete">
+        <div class="flex flex-wrap items-end gap-3">
+          <div class="field min-w-[12rem] flex-1">
+            <label for="confirm-delete" class="label">Type <strong>DELETE</strong> to confirm</label>
+            <input id="confirm-delete" name="confirm" class="input" autocomplete="off"
+                   placeholder="DELETE" aria-describedby="confirm-hint">
+          </div>
+          <button type="submit" class="btn btn-danger">Erase my profile</button>
+        </div>
+        <p id="confirm-hint" class="hint mt-2">
+          Nothing happens until the word matches.
+        </p>
+      </form>
+    </div>
+  </section>
+  {% endif %}
+
+  {# --- Closing the account for good (SRS §19.4) --- #}
+  <section class="stack mt-12">
+    <div class="stack-head"><h2 class="stack-title">Close this account</h2></div>
+
+    {% if erasure_scheduled_for %}
+      <div class="mt-4 rounded-lg border border-warning/40 p-5">
+        <p class="font-medium">
+          Your account will be erased on {{ erasure_scheduled_for|date:"j M Y" }}.
+        </p>
+        <p class="mt-1.5 text-content-muted">
+          Nothing has been removed yet. You can stop this any time before that date.
+        </p>
+        <form class="mt-5" hx-post="{{ act }}" hx-target="#data-body" hx-swap="outerHTML">
+          <input type="hidden" name="command" value="cancel_erasure">
+          <button type="submit" class="btn btn-secondary">Keep my account</button>
+        </form>
+      </div>
+    {% else %}
+      <div class="mt-4 rounded-lg border border-danger/40 p-5">
+        <p class="font-medium">This closes the account and erases what we hold.</p>
+        <p class="mt-1.5 text-content-muted">
+          After {{ erasure_grace_days }} days: your CVs, uploads, analyses,
+          interview answers, messages and profile are removed, and the text of
+          anything we sent to an AI model is deleted with them.
+        </p>
+        <p class="mt-3 text-content-muted">
+          Two things we cannot undo, said plainly: a CV already delivered to an
+          employer stays with that employer, and text already sent to an AI
+          provider cannot be unsent. Our copy goes; theirs is subject to their
+          own retention. Applications stay with employers as a record that
+          somebody applied, with nothing of you left in them.
+        </p>
+
+        <form class="mt-5" hx-post="{{ act }}" hx-target="#data-body" hx-swap="outerHTML">
+          <input type="hidden" name="command" value="erase">
+          <div class="flex flex-wrap items-end gap-3">
+            <div class="field min-w-[12rem] flex-1">
+              <label for="confirm-erase" class="label">
+                Type <strong>{{ erasure_confirmation }}</strong> to confirm
+              </label>
+              <input id="confirm-erase" name="confirm" class="input" autocomplete="off"
+                     placeholder="{{ erasure_confirmation }}" aria-describedby="erase-hint">
+            </div>
+            <button type="submit" class="btn btn-danger">Close my account</button>
+          </div>
+          <p id="erase-hint" class="hint mt-2">
+            You have {{ erasure_grace_days }} days to change your mind.
+          </p>
+        </form>
+      </div>
+    {% endif %}
+  </section>
+</div>

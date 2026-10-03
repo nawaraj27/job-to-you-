@@ -1,0 +1,115 @@
+{% comment %}
+Editor body: controls on the left, the document on the right.
+
+The whole region swaps on every command, because almost every edit moves the
+preview and the save status at the same time and swapping them separately lets
+them disagree.
+{% endcomment %}
+{% url 'resume:builder_act' document_id=document.public_id as act %}
+{% comment %}
+  Laid out by the width it is given, not by the width of the window
+  (container queries). The same region is the whole page in the editor and the
+  right-hand column of the guided and assistant screens; sized by the window,
+  it split into a 34rem form and whatever was left, which inside those screens
+  was a 56px sliver of preview with its caption one word per line, and a page
+  that scrolled sideways.
+
+  `min-w-0` on both columns. A grid item's automatic minimum size is its
+  content's, so one unshrinkable descendant makes the whole column wider than
+  the screen and the page scrolls sideways.
+{% endcomment %}
+<div id="editor-live" class="@container">
+{% comment %}
+  Background work (an assistant answer, a drafted rewording) finishes after
+  this region was drawn; its suggestions belong in it. A listener rather than
+  attributes on the region itself, so nothing is inherited by the forms inside.
+{% endcomment %}
+<div hidden hx-get="{% url 'resume:editor_live' document_id=document.public_id %}"
+     hx-trigger="improve:done from:body" hx-target="#editor-live" hx-swap="outerHTML"></div>
+<div class="grid gap-10 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] @5xl:grid-cols-[28rem_minmax(0,1fr)] @6xl:grid-cols-[34rem_minmax(0,1fr)]">
+  <div class="min-w-0 stack">
+    {% include "resume/_flash.html" %}
+    {% include "resume/_editor_status.html" %}
+    {% include "resume/_suggestions.html" %}
+
+    <section>
+      <div class="stack-head"><h2 class="stack-title">Details</h2></div>
+      <div class="mt-4 grid gap-3">
+        <div class="field">
+          <label class="label" for="c-name">Name</label>
+          <input id="c-name" name="value" class="input" value="{{ doc.contact.name }}"
+                 hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                 hx-vals='{"command": "contact", "field": "name"}'>
+        </div>
+        <div class="field">
+          <label class="label" for="c-headline">Current title</label>
+          <input id="c-headline" name="value" class="input" value="{{ doc.contact.headline }}"
+                 hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                 hx-vals='{"command": "contact", "field": "headline"}'>
+        </div>
+        <div class="field">
+          <label class="label" for="c-email">Email</label>
+          <input id="c-email" name="value" type="email" class="input" value="{{ doc.contact.email }}"
+                 hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                 hx-vals='{"command": "contact", "field": "email"}'>
+        </div>
+        <div class="field">
+          <label class="label" for="c-phone">Phone</label>
+          <input id="c-phone" name="value" class="input" value="{{ doc.contact.phone }}"
+                 hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                 hx-vals='{"command": "contact", "field": "phone"}'>
+        </div>
+        <div class="field">
+          <label class="label" for="c-location">Location</label>
+          <input id="c-location" name="value" class="input" value="{{ doc.contact.location }}"
+                 hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                 hx-vals='{"command": "contact", "field": "location"}'>
+        </div>
+      </div>
+    </section>
+
+    {% include "resume/_editor_sections.html" %}
+
+    {% comment %}
+    Template. The select switches layout in place — the draft is the document
+    and the template is only how it is drawn, so nothing here touches a word
+    of what the CV says and switching back is the same one action.
+
+    The gallery link is the same choice at full size: every template rendered
+    with this candidate's own content, side by side.
+    {% endcomment %}
+    <section>
+      <div class="stack-head"><h2 class="stack-title">Template</h2></div>
+      <form class="mt-3" hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML">
+        <input type="hidden" name="command" value="template">
+        <select name="template" class="input" aria-label="Template">
+          {% for option in templates %}
+            <option value="{{ option.slug }}" {% if option.pk == template.pk %}selected{% endif %}>{{ option.name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      <p class="mt-2 text-meta text-content-subtle">
+        <a href="{% url 'resume:templates' %}" class="link-editorial">Try another template</a>:
+        every layout drawn with this CV. Your content does not change, and you can switch back.
+      </p>
+    </section>
+
+    {% include "resume/_exports.html" %}
+    {% include "resume/_versions.html" %}
+  </div>
+
+  {% comment %}
+  The document, pinned so it stays beside the field being edited rather than
+  scrolling away the moment the section list gets long.
+  {% endcomment %}
+  <div class="min-w-0">
+    <div class="@3xl:sticky @3xl:top-20">
+      <p class="overline mb-3">Preview · {{ template.name }}</p>
+      {% include "resume/_paper.html" %}
+      <p class="mt-4 text-meta text-content-subtle">
+        This is the page your PDF exports. Every change lands here as you make it.
+      </p>
+    </div>
+  </div>
+</div>
+</div>

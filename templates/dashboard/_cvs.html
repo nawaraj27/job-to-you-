@@ -1,0 +1,54 @@
+{% comment %}
+The candidate's saved CVs, then unsaved drafts (docs/CV-Lifecycle.md).
+Shared by both states of the overview: a candidate who has built a CV with
+the assistant but not yet filled in their profile still sees it here.
+{% endcomment %}
+<section>
+  <div class="stack-head">
+    <h2 class="stack-title">Your CVs</h2>
+    <a href="{% url 'resume:builder' %}" class="link-editorial">All CVs</a>
+  </div>
+  <ul class="rows mt-2">
+    {% for cv in saved_cvs %}
+      <li class="row flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3.5">
+        <div class="min-w-0">
+          <p class="text-body-lg font-medium">{{ cv.name }}{% if cv.is_primary %} <span class="chip chip-match ml-1">Main CV</span>{% endif %}</p>
+          <p class="mt-0.5 text-meta text-content-muted">
+            {{ cv.template.name }} · edited {{ cv.updated_at|timesince }} ago
+          </p>
+        </div>
+        <a href="{% url 'resume:editor' document_id=cv.public_id %}" class="btn btn-secondary btn-sm">Open</a>
+      </li>
+    {% empty %}
+      <li class="py-3 text-meta text-content-muted">No saved CVs yet. A CV appears here once you save it.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% if drafts %}
+<section>
+  <div class="stack-head">
+    <h2 class="stack-title">Unsaved drafts</h2>
+    <a href="{% url 'resume:builder' %}#unsaved-drafts" class="link-editorial">Manage drafts</a>
+  </div>
+  <ul class="rows mt-2">
+    {% for draft in drafts %}
+      <li class="row flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3.5">
+        <div class="min-w-0">
+          <p class="text-body-lg font-medium">{{ draft.name }}</p>
+          <p class="mt-0.5 text-meta text-content-muted">
+            Edited {{ draft.updated_at|timesince }} ago{% if draft.expires_on %} · removed on {{ draft.expires_on|date:"j M" }} unless saved{% endif %}
+          </p>
+        </div>
+        {% comment %}
+          `resume:editor` takes the document. Without it this raised
+          NoReverseMatch and the whole dashboard 500'd — but only once the
+          candidate had a draft, so an empty account looked fine and every
+          real one did not.
+        {% endcomment %}
+        <a href="{% url 'resume:editor' document_id=draft.public_id %}" class="btn btn-secondary btn-sm">Continue</a>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

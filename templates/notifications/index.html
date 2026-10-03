@@ -1,0 +1,19 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Notifications.
+
+A list, not a dropdown: this is where you catch up, and a 320px panel that
+closes when you look away is where notifications go to be missed. The bell in
+the header links here rather than opening a panel of its own.
+{% endcomment %}
+
+{% block title %}Notifications — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% url 'settings:notifications' as prefs_url %}
+  {% include "components/app_head.html" with title="Notifications" text=intro action_label="Choose what you get" action_icon="cog" action_url=prefs_url %}
+{% endblock %}
+
+{% block app_body %}
+  {% include "notifications/_feed.html" %}
+{% endblock %}

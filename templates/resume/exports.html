@@ -1,0 +1,39 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Every file this candidate has exported.
+
+Kept as history rather than as a list of buttons: an application refers to a
+specific version, and "which CV did they see" is a question that gets asked
+months later.
+{% endcomment %}
+
+{% block title %}Your exports — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Your exports" text="Every file you have downloaded, and the version it came from." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl">
+    <ul class="space-y-3">
+      {% for export in exports %}
+        <li class="card">
+          <div class="card-body flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+              <p class="font-medium">{{ export.version.document.name }}</p>
+              <p class="mt-1 text-meta text-content-muted">
+                {{ export.get_format_display }} · version {{ export.version.version_no }} ·
+                {{ export.template.name }} · {{ export.created_at|date:"j M Y, H:i" }}
+              </p>
+            </div>
+            <a href="{% url 'resume:download' render_id=export.pk %}" class="btn btn-secondary btn-sm">Download</a>
+          </div>
+        </li>
+      {% empty %}
+        <li class="text-content-muted">
+          Nothing exported yet. Open a CV and use Download PDF.
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}

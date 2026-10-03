@@ -1,0 +1,100 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Platform staff roles (SRS §2.1, §2.3). Superadmin only. A grant is a proposal
+until a second superadmin approves it; a revocation is immediate and signs the
+person out. Every step is audited in `accounts.services.staff_roles`.
+{% endcomment %}
+
+{% block title %}Staff roles - staff{% endblock %}
+{% block page_heading %}Staff roles{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">Who holds platform authority. Grants need a second superadmin.</p>
+{% endblock %}
+
+{% block page_body %}
+  {% include "staff/_tabs.html" %}
+
+  <section class="stack" aria-labelledby="t-pending">
+    <div class="stack-head"><h2 id="t-pending" class="stack-title">Waiting for approval</h2></div>
+    <ul class="mt-3 divide-y divide-hairline">
+      {% for proposal in pending %}
+        <li class="flex flex-wrap items-start justify-between gap-3 py-3">
+          <div class="min-w-0">
+            <p class="font-medium break-all">{{ proposal.user.email }} → {{ proposal.get_level_display }}</p>
+            <p class="text-meta text-content-muted">
+              Proposed by {{ proposal.requested_by.email|default:"a removed account" }} · {{ proposal.reason }}
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            {% if proposal.requested_by_id != user.pk and proposal.user_id != user.pk %}
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="request" value="{{ proposal.pk }}">
+                <button type="submit" name="action" value="approve" class="btn btn-primary btn-sm">Approve<span class="sr-only"> {{ proposal.user.email }}</span></button>
+                <button type="submit" name="action" value="decline" class="btn btn-ghost btn-sm">Decline<span class="sr-only"> {{ proposal.user.email }}</span></button>
+              </form>
+            {% else %}
+              <span class="text-meta text-content-subtle">Needs another superadmin</span>
+            {% endif %}
+            {% if proposal.requested_by_id == user.pk %}
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="request" value="{{ proposal.pk }}">
+                <button type="submit" name="action" value="withdraw" class="btn btn-ghost btn-sm">Withdraw<span class="sr-only"> proposal for {{ proposal.user.email }}</span></button>
+              </form>
+            {% endif %}
+          </div>
+        </li>
+      {% empty %}
+        <li class="py-3 text-content-muted">Nothing waiting.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="stack mt-10" aria-labelledby="t-propose">
+    <div class="stack-head"><h2 id="t-propose" class="stack-title">Propose a role</h2></div>
+    <form method="post" class="mt-4 grid gap-4 sm:grid-cols-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="propose">
+      <div class="field">
+        <label for="t-email" class="label">Account email</label>
+        <input id="t-email" name="email" type="email" class="input" required>
+      </div>
+      <div class="field">
+        <label for="t-level" class="label">Level</label>
+        <select id="t-level" name="level" class="select">
+          {% for value, label in levels %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="t-reason" class="label">Why</label>
+        <input id="t-reason" name="reason" class="input" required maxlength="300">
+      </div>
+      <div class="sm:col-span-3"><button type="submit" class="btn btn-secondary">Propose</button></div>
+    </form>
+  </section>
+
+  <section class="stack mt-10" aria-labelledby="t-roles">
+    <div class="stack-head"><h2 id="t-roles" class="stack-title">Current staff</h2></div>
+    <ul class="mt-3 divide-y divide-hairline">
+      {% for role in roles %}
+        <li class="flex flex-wrap items-start justify-between gap-3 py-3">
+          <div class="min-w-0">
+            <p class="font-medium break-all">{{ role.user.email }}</p>
+            <p class="text-meta text-content-muted">{{ role.get_level_display }} · since {{ role.granted_at|date:"j M Y" }}</p>
+          </div>
+          {% if role.user_id != user.pk %}
+            <form method="post" class="flex flex-wrap items-end gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="revoke">
+              <input type="hidden" name="user" value="{{ role.user_id }}">
+              <label for="revoke-{{ role.pk }}" class="sr-only">Reason for removing {{ role.user.email }}</label>
+              <input id="revoke-{{ role.pk }}" name="reason" class="input" required maxlength="300" placeholder="Reason">
+              <button type="submit" class="btn btn-ghost btn-sm">Remove role<span class="sr-only"> from {{ role.user.email }}</span></button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% comment %}
+Alert / inline message.
+
+  {% include "components/alert.html" with level="success" title="Saved" text="Your changes are live." %}
+
+level: info (default) | success | warning | error
+{% endcomment %}
+{% with level=level|default:"info" %}
+  <div class="alert alert-{{ level }}" role="{% if level == 'error' %}alert{% else %}status{% endif %}">
+    <span class="mt-px shrink-0
+      {% if level == 'success' %}text-success-fg{% elif level == 'warning' %}text-warning-fg{% elif level == 'error' %}text-danger-fg{% else %}text-brand-600{% endif %}">
+      {% if level == "success" %}{% icon "check-circle" css_class="size-5" %}
+      {% elif level == "warning" %}{% icon "warning" css_class="size-5" %}
+      {% elif level == "error" %}{% icon "error" css_class="size-5" %}
+      {% else %}{% icon "info" css_class="size-5" %}{% endif %}
+    </span>
+    <div class="min-w-0">
+      {% if title %}<p class="font-medium">{{ title }}</p>{% endif %}
+      {% if text %}<p class="{% if title %}mt-0.5 {% endif %}text-content-muted">{{ text }}</p>{% endif %}
+    </div>
+  </div>
+{% endwith %}

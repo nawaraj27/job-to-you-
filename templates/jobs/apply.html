@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% comment %}
+The apply form.
+
+It says what will be sent before it asks for the click. Hesitation at this
+point is almost always "what exactly are they getting?", and the answer is
+three lines long, so there is no reason to make anyone guess.
+
+The CV is frozen at submission (ADR-A19): what goes is the document as it reads
+now, and editing it tomorrow does not change what the employer received.
+{% endcomment %}
+
+{% block title %}Apply for {{ job.title }} — {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="container-page">
+  <div class="app-head">
+    <a href="{{ job.url }}"
+       class="mb-4 inline-flex items-center gap-1.5 text-meta font-medium text-content-muted transition-colors hover:text-content">
+      {% icon "arrow-left" css_class="size-4" %}Back to the role
+    </a>
+    <h1 class="app-title">Apply for {{ job.title }}</h1>
+    <p class="mt-2 text-body-lg text-content-muted">
+      {{ job.company.name }} · {{ job.location }} · {{ job.salary_display }}
+    </p>
+  </div>
+
+  {% if existing and existing.is_live %}
+    <div class="panel my-8 p-5">
+      <h2 class="text-body-lg">You have already applied</h2>
+      <p class="mt-2 text-sm leading-relaxed text-content-muted">
+        One live application per role. You can withdraw the one you have and apply again.
+      </p>
+      <a class="btn btn-secondary btn-sm mt-3"
+         href="{% url 'applications:detail' existing.public_id %}">Open your application</a>
+    </div>
+  {% else %}
+    <form method="post" class="max-w-2xl space-y-8 py-8">
+      {% csrf_token %}
+      {% if error %}
+        <p class="rounded-lg border border-hairline p-3 text-sm text-danger-fg" role="alert">{{ error }}</p>
+      {% endif %}
+
+      <fieldset class="space-y-3">
+        <legend class="text-lg font-semibold">Which CV</legend>
+        <p class="text-sm text-content-muted">
+          A snapshot is taken when you send this. Editing the CV afterwards does not change
+          what the employer received.
+        </p>
+        {% for document in documents %}
+          <label class="flex items-start gap-3 rounded-lg border border-hairline p-3">
+            <input type="radio" name="document" value="{{ document.public_id }}" class="mt-1"
+                   {% if posted.document %}{% if posted.document == document.public_id|stringformat:"s" %}checked{% endif %}{% elif forloop.first %}checked{% endif %} required>
+            <span>
+              <span class="block font-medium">
+                {{ document.name }}
+                {% if document.is_primary %}
+                  {% comment %}
+                    Named on the screen where it matters. The main CV is a
+                    choice the candidate already made; a list that does not
+                    show it makes them make it again, from memory, against
+                    sixteen similar names.
+                  {% endcomment %}
+                  <span class="chip chip-match ml-1.5 align-middle">Your main CV</span>
+                {% endif %}
+              </span>
+              <span class="block text-meta text-content-muted">
+                {{ document.template.name }} · edited {{ document.updated_at|timesince }} ago
+              </span>
+            </span>
+          </label>
+        {% empty %}
+          <p class="text-sm text-content-muted">
+            You have no CV yet.
+            <a class="link-editorial" href="{% url 'resume:builder' %}">Build one first</a>.
+          </p>
+        {% endfor %}
+      </fieldset>
+
+      <fieldset class="space-y-3">
+        <legend class="text-lg font-semibold">Cover letter</legend>
+        <p class="text-sm text-content-muted">Optional. Most employers read them.</p>
+        {% if letters %}
+          <label class="block">
+            <span class="label">Reuse one</span>
+            {% comment %}
+              By public id, not primary key. A sequential id in a form is an id
+              somebody can walk, and the scoped lookup is the only thing that
+              would stop them — belt and braces beats braces alone.
+            {% endcomment %}
+            <select class="input" name="cover_letter">
+              <option value="">Write a new one</option>
+              {% comment %}
+                Dated and opened, so letters with the same title can be told
+                apart. The list showed twelve identical "For Backend Engineer
+                II · drafted" rows and no way to know which was which.
+              {% endcomment %}
+              {% for letter in letters %}
+                <option value="{{ letter.public_id }}"
+                        {% if posted.cover_letter == letter.public_id|stringformat:"s" %}selected{% endif %}>
+                  {{ letter.title|default:"Untitled" }} · {{ letter.updated_at|date:"j M" }}{% if letter.ai_run_id %} · drafted{% endif %} — “{{ letter.opening|truncatechars:60 }}”
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+          <p class="text-caption text-content-subtle">
+            Or <a href="{% url 'letters:list' %}" class="link-editorial">manage your letters</a>.
+          </p>
+        {% endif %}
+        <label class="block">
+          <span class="sr-only">Cover letter</span>
+          <textarea class="input" name="cover_letter_text" rows="8"
+                    placeholder="Why this role, and what you would bring to it.">{{ posted.cover_letter_text }}</textarea>
+        </label>
+      </fieldset>
+
+      {% if questions %}
+        <fieldset class="space-y-4">
+          <legend class="text-lg font-semibold">Their questions</legend>
+          {% for question in questions %}
+            <div>
+              <label class="label" for="q{{ question.pk }}">
+                {{ question.text }}{% if question.is_required %} <span aria-hidden="true">*</span>{% endif %}
+              </label>
+              {% if question.kind == "long_text" %}
+                <textarea class="input" id="q{{ question.pk }}" name="question_{{ question.pk }}"
+                          rows="4" {% if question.is_required %}required{% endif %}></textarea>
+              {% elif question.kind == "boolean" %}
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" id="q{{ question.pk }}" name="question_{{ question.pk }}">
+                  Yes
+                </label>
+              {% elif question.kind == "number" %}
+                <input class="input" id="q{{ question.pk }}" name="question_{{ question.pk }}"
+                       inputmode="numeric" {% if question.is_required %}required{% endif %}>
+              {% elif question.kind == "single_choice" %}
+                <select class="input" id="q{{ question.pk }}" name="question_{{ question.pk }}"
+                        {% if question.is_required %}required{% endif %}>
+                  <option value="">Choose one</option>
+                  {% for option in question.options %}<option>{{ option }}</option>{% endfor %}
+                </select>
+              {% elif question.kind == "multi_choice" %}
+                <div class="mt-1 space-y-1.5">
+                  {% for option in question.options %}
+                    <label class="flex items-center gap-2 text-sm">
+                      <input type="checkbox" name="question_{{ question.pk }}" value="{{ option }}">
+                      {{ option }}
+                    </label>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <input class="input" id="q{{ question.pk }}" name="question_{{ question.pk }}"
+                       maxlength="2000" {% if question.is_required %}required{% endif %}>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </fieldset>
+      {% endif %}
+
+      {% comment %}
+        What is actually sent, in one list, immediately above the button. The
+        contact line is the important one: an employer does not get a phone
+        number for applying (ADR-A34).
+      {% endcomment %}
+      <div class="panel p-5">
+        <h2 class="text-body-lg">What {{ job.company.name }} receives</h2>
+        <ul class="mt-2 space-y-1.5 text-sm text-content-muted">
+          <li>The CV you chose above, exactly as it reads now.</li>
+          <li>Your cover letter and answers, if you wrote any.</li>
+          <li>Your name and profile.</li>
+          <li>
+            <strong class="text-content">Not your phone number or email</strong>. Those unlock
+            only if they move you to an interview stage, and you are told when they do.
+          </li>
+        </ul>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button class="btn btn-primary btn-lg" type="submit" {% if not documents %}disabled{% endif %}>
+          Send application
+        </button>
+        <a class="btn btn-quiet btn-lg" href="{{ job.url }}">Cancel</a>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

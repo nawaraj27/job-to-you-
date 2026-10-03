@@ -1,0 +1,12 @@
+{
+  "task_key": "resume.analysis",
+  "name": "finds the obvious problems in a thin CV",
+  "inputs": {
+    "cv_text": "Priya Sharma\nDeveloper\n\nExperience\nWorked at a company doing various tasks. Responsible for things.\n\nSkills\nHardworking, team player, good communicator"
+  },
+  "expect": {
+    "has": ["verdict", "findings"],
+    "min_items": {"findings": 2},
+    "each_has": {"findings": ["title", "detail", "severity"]}
+  }
+}

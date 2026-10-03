@@ -1,0 +1,100 @@
+{% comment %}
+The editor, swapped over HTMX on save.
+
+Three states, and the distinctions are the point:
+
+  * a letter the candidate wrote — edit freely;
+  * a letter a model drafted — edit freely, with a note saying to check it and
+    a list of what it could not claim;
+  * a letter already sent with an application — read-only, because editing it
+    would rewrite what an employer read.
+{% endcomment %}
+<div id="letter-editor" class="stack">
+  {% if flash_restriction %}
+    {% include "components/restriction.html" with restriction=flash_restriction %}
+  {% elif flash_error %}
+    <p class="text-meta text-danger-fg" role="status">{{ flash_error }}</p>
+  {% elif flash_message %}
+    <p class="text-meta text-content-muted" role="status">{{ flash_message }}</p>
+  {% endif %}
+
+  {% if letter.ai_run_id %}
+    <div class="panel bg-surface-sunken p-4">
+      <p class="text-meta">
+        <span class="font-medium">This was drafted for you.</span>
+        Read it before you send it. It was written from your profile, and only
+        you know whether it says the right thing.
+      </p>
+      {% if gaps %}
+        <p class="mt-2 text-meta text-content-muted">
+          What the posting asks for that your profile does not cover, so the draft
+          could not claim it:
+        </p>
+        <ul class="mt-1 space-y-1 text-meta text-content-muted">
+          {% for gap in gaps %}<li>— {{ gap }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% comment %}
+    The phrases every generated letter uses, named so they can be cut.
+
+    Advice rather than surgery: the sentence carrying "passionate about the tax
+    engine" is also the sentence carrying the tax engine, and cutting it for
+    somebody would take the one specific thing with it. Shown for any letter,
+    not only drafted ones — people write these sentences unaided too, and this
+    is what a person who reads applications for a living would say about them.
+  {% endcomment %}
+  {% if cliches and not locked %}
+    <div class="panel p-4">
+      <p class="text-meta">
+        <span class="font-medium">Worth cutting.</span>
+        These are the lines a recruiter reads past. Nothing here is wrong; it
+        is just not yours yet.
+      </p>
+      <ul class="mt-2 space-y-1.5">
+        {% for item in cliches %}
+          <li class="text-meta text-content-muted">
+            <span class="font-medium text-content">&ldquo;{{ item.phrase }}&rdquo;</span>
+            — {{ item.why }}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if locked %}
+    <div class="panel bg-surface-sunken p-4">
+      <p class="text-meta">
+        This letter went out with an application, so it stays as it was read.
+        Duplicate it from the list if you want to edit a copy.
+      </p>
+    </div>
+    <article class="card">
+      <div class="card-body whitespace-pre-line">{{ letter.content }}</div>
+    </article>
+  {% else %}
+    <form hx-disabled-elt="find button[type=submit]"
+          hx-post="{% url 'letters:detail' public_id=letter.public_id %}"
+          hx-target="#letter-editor" hx-swap="outerHTML" class="stack">
+      {% csrf_token %}
+      <div class="field">
+        <label class="label" for="letter-title">Title</label>
+        <input class="input" id="letter-title" name="title" type="text" value="{{ letter.title }}">
+        <p class="text-caption text-content-subtle">For you only. Employers never see it.</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="letter-content">The letter</label>
+        <textarea class="input font-serif" id="letter-content" name="content" rows="18"
+                  required>{{ letter.content }}</textarea>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <span class="text-caption text-content-subtle">{{ letter.word_count }} words</span>
+      </div>
+    </form>
+  {% endif %}
+</div>

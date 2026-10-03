@@ -1,0 +1,17 @@
+{% comment %}
+On every page while a staff member views an account as its owner (FR-1.10). It
+cannot be dismissed: forgetting whose account you are in is the mistake it
+exists to prevent.
+{% endcomment %}
+<div class="alert alert-warning" role="region" aria-label="Impersonation">
+  <div class="flex w-full flex-wrap items-center justify-between gap-3">
+    <p class="min-w-0">
+      <strong>Viewing as {{ impersonation.target.email }}.</strong>
+      Everything you do is recorded as you, on their behalf. Ends {{ impersonation.expires|date:"H:i" }}.
+    </p>
+    <form method="post" action="{% url 'staff:impersonation_stop' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-secondary btn-sm">Stop viewing as {{ impersonation.target.email }}</button>
+    </form>
+  </div>
+</div>

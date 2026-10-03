@@ -1,0 +1,106 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+The company's plan (SRS §5.14, §2.4).
+
+Read-heavy on purpose: an employer plan is priced by agreement, so there is no
+checkout to render. Owner and Company Admin see the plan (decision D-11); the
+cancel and resume controls appear only for `billing.manage`, the owner alone.
+{% endcomment %}
+
+{% block title %}Plan and billing - {{ company.name }}{% endblock %}
+{% block page_heading %}Plan and billing{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    What this company is on, and what has been invoiced.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <div class="stack">
+    <section class="card">
+      <div class="card-body">
+        <p class="overline">Current plan</p>
+        <h2 class="mt-1 text-display">{{ plan.name }}</h2>
+        {% if plan.summary %}<p class="mt-2 text-content-muted">{{ plan.summary }}</p>{% endif %}
+
+        {% if subscription %}
+          <p class="mt-3 text-caption text-content-subtle">
+            Status: {{ subscription.get_state_display }}.
+            {% if subscription.pending_plan %}
+              Moves to {{ subscription.pending_plan.name }} on {{ subscription.current_period_end|date:"j M Y" }};
+              {{ plan.name }} continues until then.
+            {% elif subscription.cancel_at %}
+              Ends on {{ subscription.cancel_at|date:"j M Y" }}.
+            {% else %}
+              Renews on {{ subscription.current_period_end|date:"j M Y" }}.
+            {% endif %}
+          </p>
+          {% if can_manage %}
+            <form method="post" class="mt-4">
+              {% csrf_token %}
+              {% if subscription.cancel_at %}
+                <button type="submit" name="action" value="resume" class="btn btn-secondary">Keep this plan</button>
+              {% else %}
+                <button type="submit" name="action" value="cancel" class="btn btn-ghost">Cancel at period end</button>
+              {% endif %}
+            </form>
+          {% else %}
+            <p class="mt-3 text-caption text-content-subtle">
+              Only a company owner can change, cancel or resume the plan.
+            </p>
+          {% endif %}
+        {% else %}
+          <p class="mt-3 text-content-muted">
+            This company is on the standard employer terms. Talk to us to change them.
+          </p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="stack">
+      <h2 class="stack-title">This month</h2>
+      {% if usage %}
+        <dl class="mt-3 grid gap-4 sm:grid-cols-2">
+          {% for row in usage %}
+            <div class="card card-body">
+              <dt class="overline">{{ row.label }}</dt>
+              <dd class="mt-1 text-display tabular-nums">{{ row.used }}</dd>
+              <dd class="text-caption text-content-subtle">
+                {% if row.is_unlimited %}Unlimited on this plan{% else %}{{ row.remaining }} of {{ row.allowed }} left{% endif %}
+              </dd>
+            </div>
+          {% endfor %}
+        </dl>
+      {% else %}
+        <p class="mt-3 text-content-muted">Nothing on this plan is metered.</p>
+      {% endif %}
+    </section>
+
+    {% if invoices %}
+      <section class="stack">
+        <h2 class="stack-title">Invoices</h2>
+        <div class="mt-3 overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr><th>Number</th><th class="hidden sm:table-cell">Period</th><th>Total</th><th>Status</th><th>Due</th>{% if show_pay %}<th><span class="sr-only">Payment</span></th>{% endif %}</tr>
+            </thead>
+            <tbody>
+              {% for invoice in invoices %}
+                <tr>
+                  <td class="tabular-nums">{{ invoice.number }}</td>
+                  <td class="hidden sm:table-cell">{{ invoice.period_start|date:"j M" }} – {{ invoice.period_end|date:"j M Y" }}</td>
+                  <td class="tabular-nums">{{ invoice.total|money:invoice.currency }}</td>
+                  <td>{{ invoice.get_state_display }}</td>
+                  <td>{{ invoice.due_on|date:"j M Y" }}</td>
+                  {% if show_pay %}<td>{% include "billing/_pay_cell.html" %}</td>{% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% else %}
+      <p class="text-content-muted">No invoices yet.</p>
+    {% endif %}
+  </div>
+{% endblock %}

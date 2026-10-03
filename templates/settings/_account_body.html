@@ -1,0 +1,98 @@
+{% comment %}
+Account: how we reach you, and how the interface is addressed to you.
+
+Public details — name, headline, skills, history — are on the profile, not
+here. Splitting them that way means "who am I to employers" and "how does this
+product contact me" never get confused for each other.
+{% endcomment %}
+<div id="account-body">
+  {% include "settings/_flash.html" %}
+
+  <form hx-post="{% url 'settings:account_act' %}"
+        hx-target="#account-body" hx-swap="outerHTML" class="stack">
+    <input type="hidden" name="command" value="save">
+
+    <section>
+      <div class="stack-head"><h2 class="stack-title">Contact</h2></div>
+      <div class="mt-5 space-y-5">
+        <div class="field">
+          <p class="label" id="s-email-label">Email address</p>
+          <p class="font-medium break-all" aria-labelledby="s-email-label">{{ prefs.account.email }}</p>
+          <p class="hint">
+            {% comment %}
+              Shown, not edited. This used to be an editable, required field that
+              the save ignored while saying "Account details saved": a changed
+              address silently went nowhere.
+            {% endcomment %}
+            The address you sign in with and where updates go. Confirmation and
+            password are under <a href="{% url 'settings:security' %}" class="link-editorial">Security</a>.
+          </p>
+        </div>
+        {% if has_profile %}
+        <div class="field">
+          <label for="s-phone" class="label">Phone</label>
+          <input id="s-phone" name="phone" class="input" value="{{ prefs.account.phone }}"
+                 placeholder="+977 …">
+          <p class="hint">
+            Only shown to an employer once you apply to them. Never listed
+            publicly.
+          </p>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section>
+      <div class="stack-head"><h2 class="stack-title">Language and region</h2></div>
+      <div class="mt-5 grid gap-5 sm:grid-cols-2">
+        <div class="field">
+          <label for="s-language" class="label">Language</label>
+          <select id="s-language" name="language" class="select">
+            {% for language in languages %}
+              <option value="{{ language.key }}"
+                      {% if not language.available %}disabled{% endif %}
+                      {% if language.key == prefs.account.language %}selected{% endif %}>
+                {{ language.label }}{% if not language.available %} (not translated yet){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          <p class="hint">
+            Only English is listed as available because only English exists. The
+            others are shown so you can see what's coming, not offered and
+            quietly ignored.
+          </p>
+        </div>
+        <div class="field">
+          <label for="s-timezone" class="label">Time zone</label>
+          <select id="s-timezone" name="timezone" class="select">
+            {% for zone in timezones %}
+              <option {% if zone == prefs.account.timezone %}selected{% endif %}>{{ zone }}</option>
+            {% endfor %}
+          </select>
+          <p class="hint">Used for closing dates and interview times.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="border-t border-hairline pt-6">
+      <button type="submit" class="btn btn-primary">Save changes</button>
+    </div>
+  </form>
+
+  <section class="stack mt-10">
+    <div class="stack-head"><h2 class="stack-title">Password and sign-in</h2></div>
+    <div class="mt-4">
+      <p class="text-content-muted">
+        Change your password, turn on two-factor authentication, and see where you
+        are signed in.
+      </p>
+      {% comment %}
+        This linked to the sign-in page, which sends a signed-in person straight
+        back: a "Change password" button that could not change a password.
+      {% endcomment %}
+      <a href="{% url 'settings:security' %}" class="btn btn-secondary mt-4 self-start">
+        {% icon "lock" css_class="size-4.5" %}Security settings
+      </a>
+    </div>
+  </section>
+</div>

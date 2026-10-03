@@ -1,0 +1,99 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Every CV this candidate has.
+
+A hub rather than a single builder, because a candidate tailoring a CV per
+application ends up with several, and the version history belongs to a document
+rather than to "the CV".
+{% endcomment %}
+
+{% block title %}Your CVs — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Your CVs" text="Each CV keeps its own history. The one marked main is what applications use by default." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="stack">
+    {% include "resume/_document_list.html" %}
+
+    <section class="assist-composer reveal mt-10 flex flex-wrap items-center justify-between gap-4" aria-labelledby="assist-cta">
+      <div class="min-w-0 max-w-[60ch]">
+        <h2 id="assist-cta" class="text-title font-semibold">The quickest way: describe it</h2>
+        <p class="mt-1 text-content-muted">
+          Tell the assistant what job you want and what you have done. It asks about anything
+          missing and drafts your CV from your answers. You review every line.
+        </p>
+      </div>
+      <a href="{% url 'resume:ai' %}?new=1" class="btn btn-primary btn-lg">{% icon "lightbulb" css_class="size-4" %}Start with Assisted CV</a>
+    </section>
+
+    <section class="stack mt-10">
+      <div class="stack-head"><h2 class="stack-title">Or start a new CV yourself</h2></div>
+      <form method="post" action="{% url 'resume:builder' %}" class="mt-4 grid gap-4 sm:grid-cols-2">
+        {% csrf_token %}
+        <div class="field">
+          <label for="cv-name" class="label">Name it</label>
+          <input id="cv-name" name="name" class="input" placeholder="Backend roles">
+        </div>
+        <div class="field">
+          <label for="cv-template" class="label">Template</label>
+          <select id="cv-template" name="template" class="input">
+            {% for template in templates %}
+              <option value="{{ template.slug }}" {% if template.slug == chosen_template %}selected{% endif %}>{{ template.name }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-meta text-content-subtle">
+            Layout only. <a href="{% url 'resume:templates' %}" class="link-editorial">See every template</a>;
+            you can change it later without retyping a word.
+          </p>
+        </div>
+
+        {% comment %}
+        Blank or worked example. A blank form cannot answer "what goes in this
+        field", and a candidate who has never written a CV is being asked to
+        guess at eight of them; the example is a copy they then overwrite, and
+        it is never written anywhere unless they pick it.
+        {% endcomment %}
+        <fieldset class="sm:col-span-2">
+          <legend class="overline">Start from</legend>
+          <div class="mt-2 grid gap-2 sm:grid-cols-2">
+            <label class="choice items-start">
+              <input type="radio" name="start" value="blank" class="mt-1 size-4 accent-brand-600"
+                     {% if not start_from_example %}checked{% endif %}>
+              <span class="min-w-0">
+                <span class="block font-medium">A blank CV</span>
+                <span class="block text-meta text-content-muted">Empty sections, ready for your own history.</span>
+              </span>
+            </label>
+            <label class="choice items-start">
+              <input type="radio" name="start" value="example" class="mt-1 size-4 accent-brand-600"
+                     {% if start_from_example %}checked{% endif %}>
+              <span class="min-w-0">
+                <span class="block font-medium">A worked example</span>
+                <span class="block text-meta text-content-muted">
+                  Every section filled in, so you can see what belongs where. Replace it with yours.
+                </span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+        <fieldset class="sm:col-span-2">
+          <legend class="overline">How would you like to write it?</legend>
+          <div class="mt-2 grid gap-2 sm:grid-cols-3">
+            {% for value, label in modes %}
+              <label class="choice items-center">
+                <input type="radio" name="mode" value="{{ value }}" class="size-4 accent-brand-600"
+                       {% if value == "assistant" %}checked{% endif %}>
+                <span class="font-medium">{{ label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <div class="sm:col-span-2">
+          <button type="submit" class="btn btn-primary">Start writing</button>
+        </div>
+      </form>
+    </section>
+  </div>
+{% endblock %}

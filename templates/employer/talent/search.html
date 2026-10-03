@@ -1,0 +1,109 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+Talent search (FR-9.1, FR-9.2).
+
+Two things this screen says out loud, because a search over people should not
+feel like a search over stock:
+
+  * who is here and why — candidates who chose to be discoverable, or who
+    applied to this company;
+  * that opening a profile is visible to the person opened. Telling the
+    recruiter that is not a warning, it is the same fact the candidate is shown,
+    and a system where only one side knows is the one that gets abused.
+
+An empty query is refused by the service. "Show me everyone" is not a search.
+{% endcomment %}
+
+{% block title %}Search candidates - {{ company.name }}{% endblock %}
+{% block page_heading %}Search candidates{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    Candidates who chose to be discoverable, and everyone who applied to you.
+    Opening a profile is recorded and shown to the candidate.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <form method="get" class="card mb-6 p-5"
+        hx-get="{% url 'employer:talent' company.slug %}"
+        hx-target="#talent-results" hx-swap="outerHTML">
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="md:col-span-2">
+        <label class="label" for="q">Words on the profile</label>
+        <input class="input" id="q" name="q" type="text" value="{{ query.text }}"
+               placeholder="Backend engineer, payments, Django" aria-describedby="q-hint">
+        <p class="mt-1 text-caption text-content-subtle" id="q-hint">
+          Three letters or more match part of a word. Shorter terms match a skill's whole name, such as R, C, Go or UI.
+        </p>
+      </div>
+
+      <div class="md:col-span-2">
+        <label class="label" for="skills">Skills</label>
+        <input class="input" id="skills" name="skills" type="text"
+               value="{{ query.skill_names|join:', ' }}{% if query.unknown_skills %}{% if query.skill_names %}, {% endif %}{{ query.unknown_skills|join:', ' }}{% endif %}"
+               placeholder="Python, Django" aria-describedby="skills-hint{% if query.unknown_skills %} skills-unknown{% endif %}">
+        <p class="mt-1 text-caption text-content-subtle" id="skills-hint">
+          Separate skills with commas. Candidates are ranked by how many they have.
+        </p>
+        {% if query.unknown_skills %}
+          <p class="mt-1 text-caption text-danger-fg" id="skills-unknown" role="status">
+            Not in our skill list, so not used: {{ query.unknown_skills|join:", " }}.
+          </p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label class="label" for="location">Location</label>
+        <select class="input" id="location" name="location">
+          <option value="">Anywhere</option>
+          {% for location in locations %}
+            <option value="{{ location.pk }}"
+                    {% if query.location_id == location.pk %}selected{% endif %}>{{ location.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="label" for="seeking">Availability</label>
+        <select class="input" id="seeking" name="seeking">
+          <option value="">Any</option>
+          {% for value, label in seeking_choices %}
+            <option value="{{ value }}" {% if query.seeking == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="label" for="min_months">Minimum experience (months)</label>
+        <input class="input" id="min_months" name="min_months" type="number" min="0" step="6"
+               value="{{ query.min_experience_months|default_if_none:'' }}">
+      </div>
+
+      <div>
+        <label class="label" for="max_salary">Highest salary expectation (NPR per year)</label>
+        <input class="input" id="max_salary" name="max_salary" type="number" min="0" step="10000"
+               inputmode="numeric" value="{{ query.max_salary_base|default_if_none:'' }}"
+               aria-describedby="max-salary-hint">
+        <p class="mt-1 text-caption text-content-subtle" id="max-salary-hint">
+          Candidates who stated no expectation are still shown.
+        </p>
+      </div>
+
+      <div class="flex items-end gap-4">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="remote" value="1" {% if query.remote_ok %}checked{% endif %}>
+          <span class="text-meta">Open to remote</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="mt-4 flex items-center gap-3">
+      <button type="submit" class="btn btn-primary">Search</button>
+      <span class="text-caption text-content-subtle">
+        Searching tells nobody that you looked; opening a profile does.
+      </span>
+    </div>
+  </form>
+
+  {% include "employer/talent/_results.html" %}
+{% endblock %}

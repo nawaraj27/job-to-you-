@@ -1,0 +1,89 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Who can see you, and why (INV-4).
+
+Rows, not reassurance. Every line is a `CandidateVisibilityGrant` — a real
+record with a real reason — because "we take your privacy seriously" is what a
+product says when it cannot show you the list.
+{% endcomment %}
+
+{% block title %}Who can see you — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Who can see you" text="Every company that can open your profile, and the reason they can. Nothing else can." %}
+{% endblock %}
+
+{% block app_body %}
+{% if grants %}
+  <ul class="rows">
+    {% for grant in grants %}
+      <li class="row flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3.5">
+        <div class="min-w-0">
+          <p class="text-body-lg font-medium">{{ grant.company.name }}</p>
+          <p class="mt-0.5 text-meta text-content-muted">
+            {{ grant.get_basis_display }}
+            {% if grant.application %}
+              · {{ grant.application.job.title }}
+            {% endif %}
+            · since {{ grant.granted_at|date:"j M Y" }}
+            {% if grant.expires_at %}· until {{ grant.expires_at|date:"j M Y" }}{% endif %}
+          </p>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <p class="mt-6 measure text-sm leading-relaxed text-content-muted">
+    Blocking a company from a conversation in
+    <a class="underline [text-underline-offset:0.2em]" href="{% url 'messages:inbox' %}">Messages</a>
+    withdraws every one of these at once and hides you from their searches. Your phone number and email are separate again:
+    an employer gets those only when an application of yours reaches a stage that unlocks
+    them, and you are told on the day it happens.
+  </p>
+{% else %}
+  {% include "components/empty_state.html" with icon="verified" title="Nobody can see you" text="No company has a reason to open your profile. Applying to a role, or being saved to a company's talent pool, creates one — and it appears here." %}
+{% endif %}
+
+{% comment %}
+  Who actually looked (FR-2.8), added in P15.
+
+  Access and use of access are different facts. The list above says which
+  companies *may* open the profile; this says which ones *did*, and when.
+  Showing only the first would answer a question nobody asks.
+
+  Grouped by company and day: an employer who opens a profile four times in an
+  afternoon appears once. Ungrouped, ordinary interest reads as surveillance.
+  The individual recruiter is not named — the company is accountable for the
+  read, and naming a person exposes one person's browsing to another.
+{% endcomment %}
+<section class="stack mt-12">
+  <h2 class="stack-title">Who opened your profile</h2>
+
+  {% if views %}
+    <ul class="mt-4 divide-y divide-hairline">
+      {% for view in views %}
+        <li class="flex items-baseline justify-between gap-4 py-3">
+          <span>
+            <span class="text-meta font-medium">{{ view.company }}</span>
+            <span class="block text-caption text-content-subtle">
+              From {% for source in view.sources %}{% if not forloop.first %} and {% endif %}{% if source == "application" %}your application{% elif source == "pool" %}their talent pool{% else %}a candidate search{% endif %}{% endfor %}
+              {% if view.times > 1 %} · {{ view.times }} times{% endif %}
+            </span>
+          </span>
+          <span class="text-caption text-content-subtle">{{ view.day|date:"j M Y" }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-4 measure text-sm leading-relaxed text-content-muted">
+      Every employer read of your profile is recorded here, including reads from a
+      candidate search. Setting your visibility to <em>Nobody</em> in privacy settings
+      stops new ones. Matching keeps working, so you still see jobs.
+    </p>
+  {% else %}
+    <p class="mt-3 text-content-muted">
+      No employer has opened your profile yet. When one does, it appears here the
+      same day, including when they found you through a search.
+    </p>
+  {% endif %}
+</section>
+{% endblock %}

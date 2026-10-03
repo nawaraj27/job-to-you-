@@ -1,0 +1,27 @@
+{% comment %}
+The draft could not be written.
+
+Not an error page. The candidate asked for help with some words; the honest
+answer is to say the help is unavailable and point at the thing that always
+works, which is writing it themselves — what they did before this feature
+existed (SRS §9.3.6).
+
+The reason is deliberately not shown. "Quota exceeded" and "provider_error"
+mean nothing to a candidate and both have the same answer.
+{% endcomment %}
+{% if flash_restriction %}
+  {% comment %}The plan's cover letter allowance: said plainly, with its reset date and a way on.{% endcomment %}
+  {% include "components/restriction.html" with restriction=flash_restriction %}
+  <p class="mt-4"><a href="{{ write_url }}" class="btn btn-secondary">Write one yourself</a></p>
+{% else %}
+<div class="panel p-5">
+  <p class="text-body-lg">A draft could not be written just now.</p>
+  <p class="mt-2 text-content-muted">
+    Nothing is wrong with your application. This part is optional and often
+    better in your own words anyway.
+  </p>
+  <p class="mt-4">
+    <a href="{{ write_url }}" class="btn btn-primary">Write one yourself</a>
+  </p>
+</div>
+{% endif %}

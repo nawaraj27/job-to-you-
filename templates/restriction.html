@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% comment %}
+A full-page restriction: somebody opened a page, or sent a form without a page
+to go back to, and the answer was an expected "no" — not in the plan, not for
+this account, not available yet.
+
+It replaces a bare text/plain response that had no header, no navigation and
+no way on, which is what made a plan limit look like the site had failed. Same
+shell as the 403 and 404 pages; the status code is kept, so nothing that reads
+statuses was told a different story.
+{% endcomment %}
+
+{% block title %}{{ restriction.title }} — {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="container-page">
+  <div class="mx-auto flex min-h-[50dvh] max-w-xl flex-col justify-center py-16">
+    <h1 class="text-display-sm">{{ restriction.title }}</h1>
+    <p class="lede mt-4">{{ restriction.message }}</p>
+    {% if restriction.hint %}<p class="mt-3 text-content-muted">{{ restriction.hint }}</p>{% endif %}
+
+    <div class="mt-8 flex flex-wrap gap-3">
+      {% if restriction.action_url %}
+        <a href="{{ restriction.action_url }}" class="btn btn-primary">{{ restriction.action_label }}</a>
+      {% endif %}
+      {% if restriction.secondary_url %}
+        <a href="{{ restriction.secondary_url }}" class="btn btn-secondary">{{ restriction.secondary_label }}</a>
+      {% endif %}
+      {% if back_url %}
+        <a href="{{ back_url }}" class="btn btn-secondary">Go back</a>
+      {% endif %}
+      <a href="{% url 'core:home' %}" class="btn btn-ghost">Go to the home page</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

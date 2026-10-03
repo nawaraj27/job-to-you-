@@ -1,0 +1,134 @@
+{% load demo_ads %}
+{% comment %}
+The results half of the job list.
+
+Split out so search and filtering can swap just this region over HTMX instead
+of reloading the page: the filter rail keeps its open/closed groups, the scroll
+position survives, and the skeleton can stand in at exactly these metrics.
+
+Rendered on its own for HX requests (portals/candidate/job_views.JobListView)
+and included by jobs/list.html for the full page.
+{% endcomment %}
+
+{% comment %}
+  Applied filters, stated as words and removable one at a time.
+
+  Before this bar existed the only evidence a filter was on was a control
+  somewhere off screen. "Why are there only two results" is the most common
+  dead end on a job board, and it is caused by a filter the reader has
+  forgotten about — so the answer has to be at the top of the results, not
+  hidden in the thing that set it.
+{% endcomment %}
+{% if active_filters %}
+  <div class="flex flex-wrap items-center gap-2 border-b border-hairline pb-3">
+    <span class="overline">Filtered by</span>
+    <ul class="flex flex-wrap gap-1.5">
+      {% for filter in active_filters %}
+        <li>
+          <a href="{{ filter.remove_url }}"
+             hx-get="{{ filter.remove_url }}"
+             hx-target="#job-results .loading-content"
+             hx-swap="innerHTML"
+             hx-push-url="true"
+             hx-indicator="#job-results"
+             class="chip chip-removable"
+             aria-label="Remove filter {{ filter.label }}: {{ filter.value }}">
+            <span class="text-content-muted">{{ filter.label }}:</span>{{ filter.value }}
+            {% icon "close" css_class="size-3" %}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    <a href="{{ clear_filters_url }}"
+       hx-get="{{ clear_filters_url }}"
+       hx-target="#job-results .loading-content"
+       hx-swap="innerHTML"
+       hx-push-url="true"
+       hx-indicator="#job-results"
+       class="text-meta font-medium text-accent-content underline [text-underline-offset:0.2em]">
+      Clear all
+    </a>
+  </div>
+{% endif %}
+
+<div class="flex flex-wrap items-baseline justify-between gap-3 py-3">
+  <p class="text-meta text-content-muted" role="status">
+    <span class="font-medium text-content tabular-nums">{{ page.count }}</span>
+    {% if page.count == 1 %}role{% else %}roles{% endif %}
+    {% if query %}for “{{ query }}”{% endif %}
+    {% comment %}
+      Said out loud when it happens. A spelling-tolerant search that silently
+      answers a different question than the one typed is how someone concludes
+      the site has no jobs for them.
+    {% endcomment %}
+    {% if used_trigram %}
+      <span class="text-content-subtle">· closest matches, spelling allowed for</span>
+    {% endif %}
+  </p>
+  {% if can_save and page.count %}
+    <button type="button" class="link-editorial" x-data @click="$dispatch('open-save-search')">
+      {% icon "bell" css_class="size-4" %}Save this search
+    </button>
+  {% endif %}
+</div>
+
+{% if page.items %}
+  {% comment %}
+    One demo ad (`core.ads`), between results rather than above them: after the
+    fifth job, or under a shorter list. Never before the first result, which
+    is what somebody searched for.
+  {% endcomment %}
+  {% demo_ad_for "jobs" as sponsored %}
+  <ul class="rows">
+    {% for job in page.items %}
+      {% include "components/job_row.html" with job=job %}
+      {% if sponsored and forloop.counter == 5 and not forloop.last %}
+        <li class="py-4">{% include "components/demo_ad.html" with ad=sponsored slot="jobs" variant="row" %}</li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+  {% if sponsored and page.items|length <= 5 %}
+    <div class="mt-6">{% include "components/demo_ad.html" with ad=sponsored slot="jobs" variant="row" %}</div>
+  {% endif %}
+
+  {% if page.total_pages > 1 %}
+    <div class="mt-6">
+      {% include "components/pagination.html" with page=page %}
+    </div>
+  {% endif %}
+{% else %}
+  {% comment %}
+    An empty search names its own cause. Which filter to drop first is a real
+    question and the page can answer it — so it does, rather than offering a
+    generic "no results" and leaving the reader to guess.
+  {% endcomment %}
+  <div class="empty">
+    <span class="empty-mark">{% icon "search" css_class="size-5" %}</span>
+    <div>
+      <p class="text-body-lg font-semibold">
+        No roles match{% if query %} “{{ query }}”{% endif %}{% if active_filters %} with these filters{% endif %}
+      </p>
+      <p class="mt-1.5 text-sm leading-relaxed text-content-muted">
+        {% if active_filters %}
+          {{ active_filters|length }} filter{{ active_filters|length|pluralize }} narrowed this
+          search down to none. Removing
+          <span class="font-medium text-content">{{ active_filters.0.label|lower }}: {{ active_filters.0.value }}</span>
+          usually widens it most.
+        {% else %}
+          Try a broader job title, or search by skill instead. “Python” finds more
+          than “Python Engineer”.
+        {% endif %}
+      </p>
+    </div>
+    <div class="mt-1 flex flex-wrap gap-2">
+      {% if active_filters %}
+        <a href="{{ active_filters.0.remove_url }}" class="btn btn-secondary btn-sm">
+          Remove {{ active_filters.0.value }}
+        </a>
+        <a href="{{ clear_filters_url }}" class="btn btn-ghost btn-sm">Clear all filters</a>
+      {% else %}
+        <a href="{% url 'jobs:list' %}" class="btn btn-secondary btn-sm">Show all roles</a>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}

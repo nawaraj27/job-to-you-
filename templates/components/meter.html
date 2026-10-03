@@ -1,0 +1,24 @@
+{% comment %}
+Linear meter with an accessible name and a written value.
+
+  {% include "components/meter.html" with value=87 label="Profile match" caption="Strong match" %}
+  {% include "components/meter.html" with value=40 tone="caution" label="Section completeness" %}
+
+The number is always printed next to the bar: a length alone is not a value,
+and colour alone is not a status. `tone` is optional — matching strength uses
+the brand colour, because a low match is not an error.
+{% endcomment %}
+<div>
+  {% if label or caption %}
+    <div class="mb-1.5 flex items-baseline justify-between gap-3">
+      {% if label %}<span class="text-meta font-medium">{{ label }}</span>{% endif %}
+      <span class="text-meta tabular-nums text-content-muted">
+        {% if caption %}{{ caption }} · {% endif %}{{ value }}%
+      </span>
+    </div>
+  {% endif %}
+  <div class="meter" role="progressbar" aria-valuenow="{{ value }}" aria-valuemin="0"
+       aria-valuemax="100" aria-label="{{ label|default:'Progress' }}">
+    <span class="meter-fill" {% if tone %}data-tone="{{ tone }}"{% endif %} style="width: {{ value }}%"></span>
+  </div>
+</div>

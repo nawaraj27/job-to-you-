@@ -1,0 +1,241 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+The candidate's plan (SRS §5.14, P18).
+
+What is left comes before what to buy. Somebody arriving here after being
+refused wants to know when their allowance resets, not to read a sales page —
+so the current plan and its usage come first and the comparison after.
+
+Nothing on this page enforces anything. Every button posts to a service that
+checks again; the template only decides what to show.
+
+ADR-A59: choosing Pro opens a checkout and Pro starts when its invoice is
+paid; a move to Free is scheduled for the period end (D-08) and shown
+with its date; an overdue invoice is explained, and paid plans are not offered
+until it is settled. No proration. Payment is by invoice: bank transfer
+(ADR-A15) or, when a gateway is configured, eSewa/Khalti in test mode (ADR-A58).
+
+Sections are plain blocks under one `.stack` (the page's own spacing); an
+inner `.stack` put 3rem between every heading and its content.
+{% endcomment %}
+
+{% block title %}Your plan — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Your plan" text="What you are on, what you have used, and what else there is." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-4xl stack">
+    <section class="panel p-5 md:p-7" aria-labelledby="current-plan">
+      <div class="flex flex-wrap items-start justify-between gap-6">
+        <div class="min-w-0">
+          <p class="overline">Current plan</p>
+          <h2 id="current-plan" class="mt-1 font-serif text-display">{{ plan.name }}</h2>
+          {% if plan.summary %}<p class="mt-2 max-w-[56ch] text-content-muted">{{ plan.summary }}</p>{% endif %}
+        </div>
+        {% if current_card %}
+          <p class="shrink-0 text-right">
+            <span class="block text-title tabular-nums">{{ current_card.price }}</span>
+            <span class="text-caption text-content-subtle">{% if current_card.is_free %}forever{% else %}{{ current_card.cadence }}{% endif %}</span>
+          </p>
+        {% endif %}
+      </div>
+
+      {% if subscription %}
+        <div class="mt-5 border-t border-hairline pt-4">
+          <p class="text-meta text-content-muted">
+            {% if subscription.pending_plan %}
+              Moves to {{ subscription.pending_plan.name }} on
+              <strong class="text-content">{{ subscription.current_period_end|date:"j M Y" }}</strong>.
+              {{ plan.name }} keeps working until then, and its invoice is still due.
+            {% elif subscription.cancel_at %}
+              Ends on <strong class="text-content">{{ subscription.cancel_at|date:"j M Y" }}</strong>. Nothing changes until then.
+            {% else %}
+              Renews on <strong class="text-content">{{ subscription.current_period_end|date:"j M Y" }}</strong>.
+            {% endif %}
+          </p>
+          {% if subscription.state == "past_due" %}
+            <div class="mt-3">
+              {% include "components/alert.html" with level="warning" title="An invoice is unpaid" text="Your plan keeps working while you sort it out." %}
+            </div>
+          {% endif %}
+
+          <form method="post" class="mt-4 flex flex-wrap items-center gap-3">
+            {% csrf_token %}
+            {% if subscription.pending_plan %}
+              <button type="submit" name="action" value="keep_plan" class="btn btn-secondary">Stay on {{ plan.name }}</button>
+            {% elif subscription.cancel_at %}
+              <button type="submit" name="action" value="resume" class="btn btn-secondary">Keep my plan</button>
+            {% else %}
+              <button type="submit" name="action" value="cancel" class="btn btn-secondary">Cancel at period end</button>
+              <span class="text-meta text-content-subtle">You keep {{ plan.name }} until {{ subscription.current_period_end|date:"j M Y" }}.</span>
+            {% endif %}
+          </form>
+        </div>
+      {% endif %}
+    </section>
+
+    {% if pending %}
+      <section id="checkout" class="panel border-brand-200 p-5 md:p-7 dark:border-brand-800" aria-labelledby="checkout-title">
+        <p class="overline">Waiting for payment</p>
+        <h2 id="checkout-title" class="mt-1 text-title font-semibold">{{ pending.subscription.plan.name }} starts when this invoice is paid</h2>
+        {% if pending.invoice %}
+          <p class="mt-2 text-content-muted">
+            Invoice {{ pending.invoice.number }} ·
+            <strong class="text-content tabular-nums">{{ pending.invoice.total|money:pending.invoice.currency }}</strong>
+            for one {{ pending.subscription.plan.interval }} of {{ pending.subscription.plan.name }}.
+            You stay on {{ plan.name }} until the payment is confirmed.
+          </p>
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            {% with invoice=pending.invoice %}{% include "billing/_pay_cell.html" %}{% endwith %}
+          </div>
+          <p class="mt-3 text-caption text-content-subtle">
+            Prefer a bank transfer? Quote {{ pending.invoice.number }} as the reference and we record it when it arrives.
+            {% if payments_test_mode and online_gateways %}Online payment is in test mode and uses the providers' sandboxes.{% endif %}
+          </p>
+        {% endif %}
+        <form method="post" class="mt-4">
+          {% csrf_token %}
+          <button type="submit" name="action" value="abandon_checkout" class="btn btn-ghost btn-sm"
+                  data-confirm="Stop the move to {{ pending.subscription.plan.name }}? The invoice is cancelled and nothing is charged.">Don't start {{ pending.subscription.plan.name }}</button>
+        </form>
+      </section>
+    {% endif %}
+
+    <section aria-labelledby="usage-title">
+      <div class="stack-head">
+        <h2 id="usage-title" class="stack-title">Your allowances</h2>
+      </div>
+      {% comment %}
+        Each group's dt/dd sit in one div directly under the dl, which is what
+        axe wants of a definition list.
+      {% endcomment %}
+      {% if usage %}
+        <dl class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {% for row in usage %}
+            <div class="card card-body">
+              <dt class="overline">{{ row.label }}</dt>
+              {# The big number is what is left, the same thing the line under it counts. #}
+              <dd class="mt-1 text-display tabular-nums">{% if row.is_unlimited %}{{ row.used }}{% else %}{{ row.remaining }}{% endif %}</dd>
+              <dd class="text-caption text-content-subtle">
+                {% if row.is_unlimited %}Used {% if row.period == "day" %}today{% else %}this month{% endif %}. Unlimited on this plan{% else %}{{ row.remaining }} of {{ row.allowed }} left {% if row.period == "day" %}today{% else %}this month{% endif %}{% endif %}
+              </dd>
+              {% if not row.is_unlimited %}
+                <dd class="text-caption text-content-subtle">Resets on {{ row.resets_on|date:"j M Y" }}</dd>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </dl>
+      {% else %}
+        <p class="mt-4 text-content-muted">Nothing on your plan is metered.</p>
+      {% endif %}
+    </section>
+
+    <section id="plans" aria-labelledby="plans-title">
+      <div class="stack-head">
+        <h2 id="plans-title" class="stack-title">Compare plans</h2>
+        <a href="{% url 'core:pricing' %}" class="stack-note link-editorial">Full pricing</a>
+      </div>
+      {% if overdue %}
+        <div class="alert alert-warning mt-4" role="status">
+          <span class="mt-px shrink-0 text-warning-fg">{% icon "warning" css_class="size-5" %}</span>
+          <p>
+            Invoice {{ overdue.number }} was due on {{ overdue.due_on|date:"j M Y" }} and is still unpaid.
+            Settle it first, then you can choose a paid plan.
+          </p>
+        </div>
+      {% endif %}
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        {% for card in cards %}
+          <article class="card card-body flex flex-col {% if card.is_current %}ring-1 ring-brand-600{% endif %}" aria-label="{{ card.name }} plan">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-semibold">{{ card.name }}</h3>
+              {% if card.is_current %}<span class="badge badge-positive">Your plan</span>{% endif %}
+            </div>
+            <p class="mt-3 flex items-baseline gap-1.5">
+              <span class="text-title tabular-nums">{{ card.price }}</span>
+              <span class="text-caption text-content-subtle">{% if card.is_free %}forever{% else %}{{ card.cadence }}{% endif %}</span>
+            </p>
+            {% if card.summary %}<p class="mt-2 text-meta text-content-muted">{{ card.summary }}</p>{% endif %}
+            <ul class="mt-4 flex-1 space-y-2">
+              {% for feature in card.features %}
+                <li class="flex items-start gap-2 text-meta">
+                  <span class="mt-0.5 shrink-0 text-success-fg">{% icon "check" css_class="size-4" %}</span>{{ feature }}
+                </li>
+              {% endfor %}
+              {% for missing in card.excluded %}
+                <li class="flex items-start gap-2 text-meta text-content-subtle">
+                  <span class="mt-0.5 shrink-0">{% icon "minus" css_class="size-4" %}</span>
+                  <span><span class="sr-only">Not included: </span>{{ missing }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+
+            <div class="mt-5">
+              {% if card.is_current %}
+                <p class="text-meta text-content-subtle">You are on this plan.</p>
+              {% elif card.is_quoted %}
+                <p class="text-meta text-content-subtle">Priced by agreement. <a href="{% url 'core:contact' %}" class="link-editorial">talk to us</a>.</p>
+              {% elif subscription.pending_plan and subscription.pending_plan.code == card.code %}
+                <p class="text-meta text-content-subtle">Starts on {{ subscription.current_period_end|date:"j M Y" }}.</p>
+              {% elif pending and pending.subscription.plan.code == card.code %}
+                <p class="text-meta text-content-subtle"><a href="#checkout" class="link-editorial">Waiting for payment</a>: starts when invoice {{ pending.invoice.number }} is paid.</p>
+              {% elif overdue and not card.is_free %}
+                <p class="text-meta text-content-subtle">Available once invoice {{ overdue.number }} is paid.</p>
+              {% else %}
+                <form method="post" action="{% url 'dashboard:plan_start' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="plan" value="{{ card.code }}">
+                  <button type="submit" class="btn {% if card.is_free %}btn-secondary{% else %}btn-primary{% endif %} w-full">Move to {{ card.name }}</button>
+                </form>
+                <p class="mt-2 text-caption text-content-subtle">
+                  {% if card.is_free %}
+                    Takes effect at the end of your current period{% if subscription %}, {{ subscription.current_period_end|date:"j M Y" }}{% endif %}.
+                  {% else %}
+                    Starts on the day its first invoice is paid. You stay on your current plan until then.
+                  {% endif %}
+                </p>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+      <p class="mt-4 flex items-start gap-2 text-caption text-content-subtle">
+        {% icon "info" css_class="mt-px size-4 shrink-0" %}
+        <span>
+          Prices are in Nepali rupees. A paid plan starts when its first invoice is paid
+          {% if online_gateways %}with {% for gateway in online_gateways %}{{ gateway.label }}{% if not forloop.last %} or {% endif %}{% endfor %} or by bank transfer{% else %}by bank transfer{% endif %}.{% if online_gateways and payments_test_mode %} Online payment is in test mode and uses the providers' sandboxes; no real money moves.{% endif %}
+          Each month's renewal invoice keeps the plan running while it is open; one left unpaid
+          past its due date ends the plan. Cancelling keeps Pro until the end of the paid period.
+          No proration.
+        </span>
+      </p>
+    </section>
+
+    {% if invoices %}
+      <section aria-labelledby="invoices-title">
+        <div class="stack-head"><h2 id="invoices-title" class="stack-title">Invoices</h2></div>
+        <div class="mt-4 overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr><th>Number</th><th class="hidden sm:table-cell">Period</th><th>Total</th><th>Status</th><th>Due</th>{% if show_pay %}<th><span class="sr-only">Payment</span></th>{% endif %}</tr>
+            </thead>
+            <tbody>
+              {% for invoice in invoices %}
+                <tr>
+                  <td class="tabular-nums">{{ invoice.number }}</td>
+                  <td class="hidden sm:table-cell">{{ invoice.period_start|date:"j M" }} – {{ invoice.period_end|date:"j M Y" }}</td>
+                  <td class="tabular-nums">{{ invoice.total|money:invoice.currency }}</td>
+                  <td>{{ invoice.get_state_display }}</td>
+                  <td>{{ invoice.due_on|date:"j M Y" }}</td>
+                  {% if show_pay %}<td>{% include "billing/_pay_cell.html" %}</td>{% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

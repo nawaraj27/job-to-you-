@@ -1,0 +1,31 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Company registration. Two fields, because everything else can be added later and
+asking for it now is the difference between finishing and abandoning.
+{% endcomment %}
+
+{% block title %}Register a company - {{ site.name }}{% endblock %}
+{% block page_heading %}Register your company{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">You will be its first owner, and can invite your team straight afterwards.</p>
+{% endblock %}
+
+{% block page_body %}
+  <form method="post" class="card max-w-xl space-y-4 p-6">
+    {% csrf_token %}
+
+    <div>
+      <label class="label" for="name">Company name</label>
+      <input class="input" id="name" name="name" value="{{ name|default:'' }}" required autofocus
+             autocomplete="organization">
+    </div>
+
+    <div>
+      <label class="label" for="website">Website <span class="text-content-subtle">(optional)</span></label>
+      <input class="input" id="website" name="website" type="url" placeholder="https://" autocomplete="url"
+             value="{{ website|default:'' }}">
+    </div>
+
+    <button class="btn btn-primary" type="submit">Create company</button>
+  </form>
+{% endblock %}

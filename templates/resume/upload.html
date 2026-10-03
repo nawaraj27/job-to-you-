@@ -1,0 +1,35 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Upload a CV you already have.
+
+The file is scanned before anything reads it, and what the reader found is
+offered as suggestions rather than written to the profile (ADR-A49).
+{% endcomment %}
+
+{% block title %}Upload your CV — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Upload your CV" text="PDF, DOC or DOCX. We scan it, read it, and show you what we found before anything is saved to your profile." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl stack">
+    <form hx-post="{% url 'resume:upload_receive' %}" hx-encoding="multipart/form-data"
+          hx-target="#upload-result" hx-swap="innerHTML" class="card">
+      {% csrf_token %}
+      <div class="card-body">
+        <div class="field">
+          <label for="cv-file" class="label">Choose a file</label>
+          <input id="cv-file" type="file" name="file" class="input" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
+          <p class="hint">PDF, DOC or DOCX, up to 10 MB. A photo or scan of a CV can't be read.</p>
+        </div>
+        <button type="submit" class="btn btn-primary mt-4">Upload</button>
+      </div>
+    </form>
+
+    <div id="upload-result" class="mt-6"></div>
+
+    {% include "resume/_import_proposals.html" %}
+    {% include "resume/_upload_history.html" %}
+  </div>
+{% endblock %}

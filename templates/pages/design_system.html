@@ -1,0 +1,524 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Internal component gallery (DEBUG only).
+
+Every visual decision in the product should be visible on this one page. If a
+component is not here, it is not part of the system yet.
+{% endcomment %}
+
+{% block title %}Design system — {{ site.name }}{% endblock %}
+{% block page_heading %}Design system{% endblock %}
+{% block page_intro %}
+  <p class="mt-4 max-w-2xl text-body-lg leading-relaxed text-content-muted">
+    The shared vocabulary. Toggle the theme in the header — everything here must
+    hold up in both.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+<div class="space-y-16">
+
+  {# ---------------- Colour ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Semantic colour</h2>
+    <p class="mt-1 text-sm text-content-muted">
+      Components use these, never raw palette steps. They flip with the theme.
+    </p>
+    {% comment %}
+      Class names are written out literally — Tailwind scans source text, so
+      building them from a loop variable would produce no CSS.
+    {% endcomment %}
+    <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="card overflow-hidden">
+        <div class="h-16 border-b border-hairline bg-canvas"></div>
+        <p class="px-3 py-2 font-mono text-caption text-content-muted">canvas</p>
+      </div>
+      <div class="card overflow-hidden">
+        <div class="h-16 border-b border-hairline bg-surface"></div>
+        <p class="px-3 py-2 font-mono text-caption text-content-muted">surface</p>
+      </div>
+      <div class="card overflow-hidden">
+        <div class="h-16 border-b border-hairline bg-surface-sunken"></div>
+        <p class="px-3 py-2 font-mono text-caption text-content-muted">surface-sunken</p>
+      </div>
+      <div class="card overflow-hidden">
+        <div class="h-16 border-b border-hairline bg-surface-raised"></div>
+        <p class="px-3 py-2 font-mono text-caption text-content-muted">surface-raised</p>
+      </div>
+    </div>
+
+    <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="card card-body"><p class="text-content">content</p></div>
+      <div class="card card-body"><p class="text-content-muted">content-muted</p></div>
+      <div class="card card-body"><p class="text-content-subtle">content-subtle</p></div>
+      <div class="card card-body"><p class="text-accent-content">accent-content</p></div>
+    </div>
+
+    <h3 class="mt-8 text-sm font-semibold">Brand scale</h3>
+    <div class="mt-3 flex flex-wrap gap-1.5">
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-50"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">50</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-100"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">100</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-200"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">200</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-300"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">300</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-400"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">400</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-500"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">500</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-600"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">600</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-700"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">700</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-800"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">800</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-900"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">900</p></div>
+      <div class="w-16"><div class="h-10 rounded-md border border-hairline bg-brand-950"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">950</p></div>
+    </div>
+
+    <h3 class="mt-8 text-sm font-semibold">Status</h3>
+    <div class="mt-3 flex flex-wrap gap-1.5">
+      <div class="w-24"><div class="h-10 rounded-md border border-hairline bg-positive-500"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">positive</p></div>
+      <div class="w-24"><div class="h-10 rounded-md border border-hairline bg-caution-500"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">caution</p></div>
+      <div class="w-24"><div class="h-10 rounded-md border border-hairline bg-critical-500"></div><p class="mt-1 text-center font-mono text-overline text-content-subtle">critical</p></div>
+    </div>
+  </section>
+
+  {# ---------------- Type ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Typography</h2>
+    <p class="mt-1 text-sm text-content-muted">
+      Two voices. Serif (Newsreader) carries anything the reader is asked to
+      believe — headlines, figures, quotes. Sans (Inter) carries anything they
+      are asked to operate — navigation, buttons, labels, form text.
+    </p>
+    <div class="mt-5 card card-body space-y-5">
+      <p class="font-serif text-display-lg">Display large</p>
+      <p class="font-serif text-display">Display</p>
+      <p class="font-serif text-display-sm">Display small</p>
+      <p class="font-serif text-title">Title — section heading</p>
+      <p class="text-lg font-semibold tracking-tight">Sub-heading (sans, inside a component)</p>
+      <p class="lede">Lede — the paragraph that follows a headline, capped at the reading measure.</p>
+      <p class="text-base">Body — the default reading size for long text.</p>
+      <p class="text-sm text-content-muted">Small — supporting copy, descriptions, table cells.</p>
+      <p class="eyebrow">Eyebrow label</p>
+      <p class="eyebrow-rule">Eyebrow with rule</p>
+      <p class="font-mono text-sm">Mono — 0123456789 for IDs and scores</p>
+    </div>
+  </section>
+
+  {# ---------------- Editorial ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Editorial</h2>
+    <p class="mt-1 text-sm text-content-muted">
+      The marketing vocabulary. Deliberately small: a rule, a figure, a numbered
+      row, a quote, a photo frame. Nothing here floats and nothing is frosted.
+    </p>
+
+    <div class="mt-5 card card-body space-y-8">
+
+      <div>
+        <p class="text-sm font-semibold">Statistic</p>
+        <div class="mt-3 border-t-2 border-hairline-strong pt-4">
+          <span class="stat-value block">9 checks</span>
+          <span class="mt-1.5 block text-sm font-medium">Scored on every upload</span>
+          <span class="mt-1 block text-meta text-content-muted">Structure, keywords, achievements, formatting.</span>
+        </div>
+      </div>
+
+      <div>
+        <p class="text-sm font-semibold">Numbered step row</p>
+        <ol class="mt-3 border-b border-hairline">
+          <li class="step-row">
+            <span class="step-number" aria-hidden="true">01</span>
+            <div>
+              <h3 class="text-base">Upload your CV</h3>
+              <p class="mt-2 text-body-lg text-content-muted">PDF or Word. We read it the way an applicant tracking system does.</p>
+            </div>
+          </li>
+          <li class="step-row">
+            <span class="step-number" aria-hidden="true">02</span>
+            <div>
+              <h3 class="text-base">See what's holding it back</h3>
+              <p class="mt-2 text-body-lg text-content-muted">Structure, keywords, achievements, formatting — scored and explained.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div>
+        <p class="text-sm font-semibold">Pull quote</p>
+        <blockquote class="pullquote mt-3 max-w-[34ch]">
+          You were never told what the filter was looking for. That is the whole problem.
+        </blockquote>
+      </div>
+
+      <div>
+        <p class="text-sm font-semibold">Editorial link</p>
+        <a href="#" class="link-editorial mt-3">See what your CV scores{% icon "arrow-right" css_class="size-4" %}</a>
+      </div>
+
+      <div>
+        <p class="text-sm font-semibold">Inverted region (<code class="font-mono text-meta">.on-photo</code>)</p>
+        <p class="mt-1 text-meta text-content-muted">
+          Flips the semantic tokens for a subtree sitting over a photograph, so
+          components keep using <code class="font-mono">text-content</code> and
+          <code class="font-mono">border-hairline</code> and simply come out light.
+        </p>
+        <div class="mt-3 rounded-lg bg-ink-950 p-6">
+          <div class="on-photo text-content">
+            <p class="eyebrow-rule">For students and job seekers</p>
+            <p class="font-serif mt-3 text-2xl">Everything between your CV and your next offer.</p>
+            <p class="mt-2 text-sm text-content-muted">Muted tier over ink.</p>
+            <p class="mt-1 text-sm text-content-subtle">Subtle tier over ink.</p>
+            <div class="mt-4 flex flex-wrap gap-2.5">
+              <button class="btn btn-hero">Upload your CV</button>
+              <button class="btn btn-hero-ghost">Browse jobs</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  {# ---------------- Buttons ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Buttons</h2>
+    <div class="mt-5 card card-body space-y-5">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn btn-secondary">Secondary</button>
+        <button class="btn btn-ghost">Ghost</button>
+        <button class="btn btn-danger">Danger</button>
+        <button class="btn btn-primary" disabled>Disabled</button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button class="btn btn-primary btn-sm">Small</button>
+        <button class="btn btn-primary">Default</button>
+        <button class="btn btn-primary btn-lg">Large</button>
+        <button class="btn btn-secondary btn-icon" aria-label="Settings">{% icon "cog" %}</button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button class="btn btn-primary">{% icon "upload" css_class="size-4.5" %}With leading icon</button>
+        <button class="btn btn-secondary">Continue{% icon "arrow-right" css_class="size-4" %}</button>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------- Forms ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Form controls</h2>
+    <div class="mt-5 card card-body grid gap-5 md:grid-cols-2">
+      <div class="field">
+        <label class="label" for="ds-text">Text input</label>
+        <input id="ds-text" class="input" placeholder="you@example.com">
+        <p class="hint">Hint text sits under the control.</p>
+      </div>
+      <div class="field">
+        <label class="label" for="ds-error">With error</label>
+        <input id="ds-error" class="input" aria-invalid="true" value="not-an-email">
+        <p class="field-error">Enter a valid email address.</p>
+      </div>
+      <div class="field">
+        <label class="label" for="ds-select">Select</label>
+        <select id="ds-select" class="select">
+          <option>Backend Engineer</option>
+          <option>Data Analyst</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="ds-textarea">Textarea</label>
+        <textarea id="ds-textarea" class="textarea" placeholder="Describe the role…"></textarea>
+      </div>
+      <div class="md:col-span-2 grid gap-2 sm:grid-cols-2">
+        <label class="choice">
+          <input type="radio" name="ds-choice" class="mt-0.5 accent-brand-600" checked>
+          <span class="text-sm font-medium">Find a job</span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="ds-choice" class="mt-0.5 accent-brand-600">
+          <span class="text-sm font-medium">Hire people</span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------- Feedback ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Feedback</h2>
+    <div class="mt-5 space-y-3">
+      {% include "components/alert.html" with level="info" title="Heads up" text="Your analysis is queued and will start shortly." %}
+      {% include "components/alert.html" with level="success" title="Saved" text="Your resume was exported as PDF." %}
+      {% include "components/alert.html" with level="warning" title="Needs attention" text="Three roles have inconsistent date formats." %}
+      {% include "components/alert.html" with level="error" title="Upload failed" text="That file is larger than 5 MB." %}
+    </div>
+
+    <div class="mt-5 flex flex-wrap gap-2">
+      <span class="badge badge-neutral">Draft</span>
+      <span class="badge badge-accent">Recommended</span>
+      <span class="badge badge-positive">{% icon "check" css_class="size-3.5" %}Passed</span>
+      <span class="badge badge-caution">Needs work</span>
+      <span class="badge badge-critical">Blocking</span>
+    </div>
+  </section>
+
+  {# ---------------- Data display ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Data display</h2>
+    <div class="mt-5 grid gap-5 lg:grid-cols-2">
+      <div class="card card-body">
+        <h3 class="text-sm font-semibold">Score ring</h3>
+        <div class="mt-4 flex items-center gap-6">
+          {% include "components/score_ring.html" with value=92 label="Excellent" %}
+          {% include "components/score_ring.html" with value=71 label="Fair" %}
+          {% include "components/score_ring.html" with value=44 label="Poor" %}
+        </div>
+      </div>
+
+      <div class="card card-body">
+        <h3 class="text-sm font-semibold">Check rows</h3>
+        <ul class="mt-2 divide-y divide-hairline">
+          {% include "components/check_row.html" with check=sample_pass %}
+          {% include "components/check_row.html" with check=sample_warn %}
+          {% include "components/check_row.html" with check=sample_fail %}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------- Disclosure ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Disclosure</h2>
+    <div class="mt-5 card divide-y divide-hairline">
+      {% for label in "Formatting,Keywords,Achievements"|split:"," %}
+        <div x-data="disclosure({% if forloop.first %}true{% endif %})" class="px-5">
+          <button type="button" @click="toggle()"
+                  class="flex w-full items-center justify-between gap-4 py-4 text-left"
+                  :aria-expanded="open ? 'true' : 'false'">
+            <span class="text-sm font-medium">{{ label }}</span>
+            <span class="text-content-subtle transition-transform" :class="open && 'rotate-180'">
+              {% icon "chevron-down" css_class="size-4.5" %}
+            </span>
+          </button>
+          <div x-show="open" x-cloak x-transition.opacity.duration.150ms class="pb-4">
+            <p class="text-sm leading-relaxed text-content-muted">
+              Collapsible report section. Closed by default so the report opens as a
+              summary rather than a wall of findings.
+            </p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ---------------- Application vocabulary ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Application vocabulary</h2>
+    <p class="mt-1 text-sm text-content-muted">
+      Everything above is the public site. These are the pieces the signed-in
+      product is built from — denser, quieter, built for reading data.
+    </p>
+
+    <div class="mt-6 space-y-10">
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Rows</h3>
+        <p class="mt-1 text-sm text-content-muted">
+          The default container for a list of records. Not cards: twenty bordered
+          boxes turn one scan into twenty decisions.
+        </p>
+        <ul class="rows mt-3">
+          <li class="row row-interactive">
+            <p class="text-body-lg font-medium">A record</p>
+            <p class="mt-1 text-meta text-content-muted">With its supporting line.</p>
+          </li>
+          <li class="row row-interactive">
+            <p class="text-body-lg font-medium">Another record</p>
+            <p class="mt-1 text-meta text-content-muted">Hairline separated, hover on the row.</p>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Chips</h3>
+        <p class="mt-1 text-sm text-content-muted">
+          Skills. Never colour alone — a match carries a tick, a gap carries a dashed
+          edge and a plus, so both survive greyscale and a screen reader.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <span class="chip">Neutral</span>
+          <span class="chip chip-match">{% icon "check" css_class="size-3" %}Matched</span>
+          <span class="chip chip-gap">{% icon "warning" css_class="size-3" %}Missing</span>
+          <label class="chip chip-toggle"><input type="checkbox" class="sr-only">Toggle</label>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Meters and figures</h3>
+        <div class="mt-3 grid gap-6 sm:grid-cols-2">
+          <div class="space-y-4">
+            {% include "components/meter.html" with value=87 label="Profile match" caption="Strong" %}
+            {% include "components/meter.html" with value=58 tone="caution" label="Evidence and impact" %}
+            {% include "components/meter.html" with value=94 tone="positive" label="Machine readability" %}
+          </div>
+          <dl class="grid grid-cols-2 gap-x-6 gap-y-4">
+            <div class="figure-block">
+              <dt class="text-meta text-content-muted">Saved roles</dt>
+              <dd class="figure-value">3</dd>
+            </div>
+            <div class="figure-block">
+              <dt class="text-meta text-content-muted">Applications</dt>
+              <dd class="figure-value">12</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Controls</h3>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <div class="segmented">
+            <button type="button" aria-selected="true">All</button>
+            <button type="button" aria-selected="false">Open</button>
+            <button type="button" aria-selected="false">Closed</button>
+          </div>
+          <button type="button" class="filter-btn">{% icon "sliders" css_class="size-4" %}Filters</button>
+          <button type="button" class="filter-btn" data-active="true">Remote · 2</button>
+        </div>
+        <div class="tabs mt-5">
+          <button type="button" class="tab" aria-selected="true">Content</button>
+          <button type="button" class="tab" aria-selected="false">Design</button>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Steps</h3>
+        <ol class="steps mt-3">
+          <li class="flex items-center gap-2">
+            <span class="step-dot" data-state="done">{% icon "check" css_class="size-3.5" %}</span>
+            <span class="text-caption text-content-subtle">Applied</span>
+            <span class="h-px w-6 bg-hairline" aria-hidden="true"></span>
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="step-dot" data-state="current">2</span>
+            <span class="text-caption font-semibold">In review</span>
+            <span class="h-px w-6 bg-hairline" aria-hidden="true"></span>
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="step-dot">3</span>
+            <span class="text-caption text-content-subtle">Interview</span>
+          </li>
+        </ol>
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Marks</h3>
+        <div class="mt-3 flex flex-wrap items-end gap-4">
+          {% include "components/avatar.html" with name="Lumen Systems" initials="LS" size="sm" %}
+          {% include "components/avatar.html" with name="Lumen Systems" initials="LS" %}
+          {% include "components/avatar.html" with name="Lumen Systems" initials="LS" size="lg" %}
+          {% include "components/avatar.html" with name="Lumen Systems" initials="LS" size="xl" %}
+          <span class="ml-4">{% include "components/brand_mark.html" %}</span>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Empty state</h3>
+        {% include "components/empty_state.html" with icon="bookmark" title="Nothing saved yet" text="Use the bookmark on any listing to keep it here while you decide." action_label="Browse jobs" action_url="#" action_icon="search" %}
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Status, as meaning</h3>
+        <p class="mt-1 text-sm text-content-muted">
+          Four semantic triples. Components reference these; no template names a
+          palette step, and neither theme needs a per-component override.
+        </p>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="card card-body">
+            <div class="h-8 rounded-md bg-success-surface"></div>
+            <p class="mt-2 text-sm font-medium text-success-fg">success</p>
+          </div>
+          <div class="card card-body">
+            <div class="h-8 rounded-md bg-warning-surface"></div>
+            <p class="mt-2 text-sm font-medium text-warning-fg">warning</p>
+          </div>
+          <div class="card card-body">
+            <div class="h-8 rounded-md bg-danger-surface"></div>
+            <p class="mt-2 text-sm font-medium text-danger-fg">danger</p>
+          </div>
+          <div class="card card-body">
+            <div class="h-8 rounded-md bg-info-surface"></div>
+            <p class="mt-2 text-sm font-medium text-info-fg">info</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Interface type scale</h3>
+        <p class="mt-1 text-sm text-content-muted">
+          Named by role. Replaced 393 arbitrary <code class="font-mono text-meta">text-[…rem]</code>
+          utilities spread across seven values, two of which duplicated Tailwind's own steps.
+        </p>
+        <div class="card card-body mt-3 space-y-2">
+          <p class="text-body-lg">body-lg — primary interface text</p>
+          <p class="text-body">body — interface prose</p>
+          <p class="text-meta text-content-muted">meta — secondary interface text</p>
+          <p class="text-caption text-content-subtle">caption — timestamps, credits, fine print</p>
+          <p class="overline">overline — micro label</p>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Skeletons</h3>
+        <p class="mt-1 text-sm text-content-muted">
+          Built to the metrics of what they replace, so the swap causes no layout
+          shift. Staggered 90ms per row; the pulse is removed under
+          <code class="font-mono text-meta">prefers-reduced-motion</code>.
+        </p>
+
+        <p class="mt-5 text-sm font-semibold">rows — mirrors a job result</p>
+        <div class="mt-2">{% include "components/skeleton.html" with variant="rows" count=2 %}</div>
+
+        <p class="mt-6 text-sm font-semibold">report — mirrors the analysis verdict</p>
+        <div class="mt-2">{% include "components/skeleton.html" with variant="report" %}</div>
+
+        <div class="mt-6 grid gap-6 sm:grid-cols-2">
+          <div>
+            <p class="text-sm font-semibold">stats</p>
+            <div class="mt-2">{% include "components/skeleton.html" with variant="stats" count=2 %}</div>
+          </div>
+          <div>
+            <p class="text-sm font-semibold">text</p>
+            <div class="mt-2">{% include "components/skeleton.html" with variant="text" count=4 %}</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-meta font-semibold uppercase tracking-wider text-content-subtle">Dropzone</h3>
+        <label class="dropzone mt-3">
+          <input type="file">
+          <span class="grid size-12 place-items-center rounded-full border border-hairline-strong bg-surface text-content-subtle">
+            {% icon "upload" css_class="size-5" %}
+          </span>
+          <span>
+            <span class="block text-body-lg font-semibold">Drop your CV here, or choose a file</span>
+            <span class="mt-1 block text-meta text-content-muted">PDF or Word, up to 10 MB.</span>
+          </span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------- Icons ---------------- #}
+  <section>
+    <h2 class="text-lg font-semibold tracking-tight">Icons</h2>
+    <p class="mt-1 text-sm text-content-muted">
+      One 24-grid, 1.5 stroke, inherits <code class="font-mono text-meta">currentColor</code>.
+    </p>
+    <div class="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-8">
+      {% for name in icon_names %}
+        <div class="card flex flex-col items-center gap-2 p-3">
+          <span class="text-content-muted">{% icon name %}</span>
+          <span class="truncate text-center font-mono text-overline text-content-subtle">{{ name }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}

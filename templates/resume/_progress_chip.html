@@ -1,0 +1,36 @@
+{% comment %}
+The CV the candidate uploaded, from every page (CVP-04).
+
+Running: which step, and "Resume progress". Ready: "View results". It asks for
+itself again only while the file is moving; the answer once it is done has no
+poll attribute, which is what stops it. Steps, not a percentage: neither the
+scan nor the read reports how far through it is.
+{% endcomment %}
+{% if cv_progress %}
+  <div id="cv-progress-chip" aria-live="polite"
+       {% if cv_progress.running %}hx-get="{% url 'resume:progress_chip' %}" hx-trigger="every 8s"
+       hx-swap="outerHTML"{% endif %}>
+    {% if cv_progress.running %}
+      <a href="{% url 'resume:processing' %}" class="badge badge-accent" aria-label="Your CV is being read, step {{ cv_progress.step }} of {{ cv_progress.steps }}. Resume progress.">
+        {% icon "spinner" css_class="size-3.5 animate-spin" %}
+        <span class="hidden sm:inline">{% if cv_progress.state == "scanning" %}Checking your CV{% else %}Reading your CV{% endif %} ·</span>
+        step {{ cv_progress.step }}/{{ cv_progress.steps }}
+        <span class="hidden sm:inline underline [text-underline-offset:0.2em]">Resume progress</span>
+      </a>
+    {% elif cv_progress.state == "ready" %}
+      <a href="{% url 'resume:upload' %}#import-proposals" class="badge badge-positive">
+        {% icon "check-circle" css_class="size-3.5" %}
+        <span class="hidden sm:inline">Your CV has been read ·</span>
+        <span class="underline [text-underline-offset:0.2em]">View results</span>
+      </a>
+    {% else %}
+      <a href="{% url 'resume:upload' %}" class="badge badge-neutral">
+        {% icon "warning" css_class="size-3.5" %}
+        <span class="hidden sm:inline">We could not read your CV ·</span>
+        <span class="underline [text-underline-offset:0.2em]">See why</span>
+      </a>
+    {% endif %}
+  </div>
+{% else %}
+  <div id="cv-progress-chip" class="hidden"></div>
+{% endif %}

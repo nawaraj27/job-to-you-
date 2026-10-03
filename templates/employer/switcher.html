@@ -1,0 +1,31 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Company chooser. Rendered only when someone belongs to more than one company and
+has no recent context — a single-company user is redirected straight past this
+screen rather than asked a question with one answer.
+{% endcomment %}
+
+{% block title %}Choose a company - {{ site.name }}{% endblock %}
+{% block page_heading %}Choose a company{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">You work with more than one. Everything you do next belongs to the one you pick.</p>
+{% endblock %}
+
+{% block page_body %}
+  <ul class="grid gap-3 sm:grid-cols-2">
+    {% for company in companies %}
+      <li>
+        <a class="card flex items-center gap-3 p-4" href="{% url 'employer:overview' company.slug %}">
+          <span>
+            <span class="block font-medium">{{ company.name }}</span>
+            <span class="block text-sm text-content-subtle">{{ company.get_verification_state_display }}</span>
+          </span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <p class="mt-6 text-sm text-content-subtle">
+    <a class="nav-link" href="{% url 'employer:create' %}">Register another company</a>
+  </p>
+{% endblock %}

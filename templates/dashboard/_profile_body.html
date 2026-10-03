@@ -1,0 +1,329 @@
+{% comment %}
+The whole profile, re-rendered after every edit.
+
+One region rather than seven, because almost every change moves the
+completeness meter as well as the field itself — swapping them separately
+would let the meter lag the record it describes. Editing is inline: an Edit
+button reveals the fields in place and Cancel puts them back, so the page never
+navigates away from what is being changed.
+
+`row_version` rides along on the two forms that edit whole groups. Two tabs on
+one profile is ordinary behaviour, and without it the second save silently
+discards the first.
+{% endcomment %}
+{% url 'dashboard:profile_act' as act %}
+<div id="profile-body" class="grid gap-10 lg:grid-cols-[1fr_17rem] lg:gap-14">
+  <div class="min-w-0 stack">
+
+    {% if flash_error %}
+      <div class="alert alert-error" role="alert">
+        <span class="mt-px shrink-0 text-danger-fg">{% icon "error" css_class="size-5" %}</span>
+        <div>
+          <p class="alert-title">That didn't save</p>
+          <p class="mt-0.5 text-content-muted">{{ flash_error }}</p>
+        </div>
+      </div>
+    {% endif %}
+
+    {# ---------- Basics ---------- #}
+    <section x-data="{ editing: {% if editing == 'basics' %}true{% else %}false{% endif %} }">
+      <div class="stack-head">
+        <h2 class="stack-title">Basics</h2>
+        {% comment %}The label is rendered here, not only by Alpine: before the
+        script runs, or without it, the button had no accessible name, and two
+        buttons both called "Edit" did not say which section they open.{% endcomment %}
+        <button type="button" class="link-editorial" @click="editing = !editing"
+                :aria-expanded="editing ? 'true' : 'false'" aria-expanded="false">
+          {% icon "pencil" css_class="size-4" %}<span x-text="editing ? 'Cancel' : 'Edit'">Edit</span><span class="sr-only"> basics</span>
+        </button>
+      </div>
+
+      <dl x-show="!editing" class="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+        <div>
+          <dt class="overline">Name</dt>
+          <dd class="mt-1 text-body-lg font-medium">{{ profile.name|default:"—" }}</dd>
+        </div>
+        <div>
+          <dt class="overline">Current title</dt>
+          <dd class="mt-1 text-body-lg font-medium">{{ profile.headline|default:"—" }}</dd>
+        </div>
+        <div>
+          <dt class="overline">Email</dt>
+          <dd class="mt-1 text-body-lg font-medium">{{ profile.email }}</dd>
+          <dd class="mt-1 text-meta text-content-subtle">Changed in settings, not here.</dd>
+        </div>
+        <div>
+          <dt class="overline">Phone</dt>
+          <dd class="mt-1 text-body-lg font-medium">{{ profile.phone|default:"—" }}</dd>
+          <dd class="mt-1 text-meta text-content-subtle">
+            Encrypted, and never shown to an employer before an interview stage.
+          </dd>
+        </div>
+        {% if profile.summary %}
+          <div class="sm:col-span-2">
+            <dt class="overline">Summary</dt>
+            <dd class="mt-1 leading-relaxed text-content-muted">{{ profile.summary }}</dd>
+          </div>
+        {% endif %}
+      </dl>
+
+      <form x-show="editing" x-cloak class="mt-5 grid gap-4 sm:grid-cols-2"
+            hx-post="{{ act }}" hx-target="#profile-body" hx-swap="outerHTML">
+        <input type="hidden" name="command" value="basics">
+        <input type="hidden" name="section" value="basics">
+        <input type="hidden" name="row_version" value="{{ profile.row_version }}">
+        <div class="field">
+          <label for="p-headline" class="label">Current title</label>
+          <input id="p-headline" name="headline" class="input" value="{{ profile.headline }}"
+                 autocomplete="organization-title" maxlength="160">
+        </div>
+        <div class="field">
+          <label for="p-phone" class="label">Phone</label>
+          <input id="p-phone" name="phone" class="input" value="{{ profile.phone }}"
+                 autocomplete="tel" inputmode="tel">
+        </div>
+        <div class="field sm:col-span-2">
+          <label for="p-summary" class="label">Summary</label>
+          <textarea id="p-summary" name="summary" rows="4" class="input">{{ profile.summary }}</textarea>
+          <p class="hint">A few lines in your own words. Job matching reads your skills, not this.</p>
+        </div>
+        <div class="flex gap-2 sm:col-span-2">
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          <button type="button" class="btn btn-ghost btn-sm" @click="editing = false">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    {# ---------- What you're looking for ---------- #}
+    <section x-data="{ editing: {% if editing == 'seeking' %}true{% else %}false{% endif %} }">
+      <div class="stack-head">
+        <h2 class="stack-title">What you're looking for</h2>
+        <button type="button" class="link-editorial" @click="editing = !editing"
+                :aria-expanded="editing ? 'true' : 'false'" aria-expanded="false">
+          {% icon "pencil" css_class="size-4" %}<span x-text="editing ? 'Cancel' : 'Edit'">Edit</span><span class="sr-only"> what you're looking for</span>
+        </button>
+      </div>
+
+      <div x-show="!editing" class="mt-5">
+        <dl class="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+          <div>
+            <dt class="overline">Availability</dt>
+            <dd class="mt-1 text-body-lg font-medium">{{ profile.seeking_label|default:"Not set" }}</dd>
+          </div>
+          <div>
+            <dt class="overline">Notice period</dt>
+            <dd class="mt-1 text-body-lg font-medium">{{ profile.notice|default:"Not set" }}</dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="overline">Salary expectation</dt>
+            <dd class="mt-1 text-body-lg font-medium">{{ profile.salary_expectation|default:"Not set" }}</dd>
+            <dd class="mt-1 text-meta text-content-subtle">Never shown to employers. Used only to rank roles.</dd>
+          </div>
+        </dl>
+
+        <p class="overline mt-6">Open to</p>
+        <form class="mt-2 flex flex-wrap gap-1.5"
+              hx-post="{{ act }}" hx-trigger="change" hx-target="#profile-body" hx-swap="outerHTML">
+          <input type="hidden" name="command" value="open_to">
+          {% for value, label in work_types.items %}
+            <label class="chip chip-toggle">
+              <input type="checkbox" name="open_to" value="{{ value }}" class="sr-only"
+                     {% if value in profile.open_to %}checked{% endif %}>
+              {{ label }}
+            </label>
+          {% endfor %}
+        </form>
+      </div>
+
+      <form x-show="editing" x-cloak class="mt-5 grid gap-4 sm:grid-cols-2"
+            hx-post="{{ act }}" hx-target="#profile-body" hx-swap="outerHTML">
+        <input type="hidden" name="command" value="seeking">
+        <input type="hidden" name="section" value="seeking">
+        <input type="hidden" name="row_version" value="{{ profile.row_version }}">
+        <div class="field">
+          <label for="p-seeking" class="label">Availability</label>
+          <select id="p-seeking" name="seeking" class="input">
+            <option value="">Not set</option>
+            {% for value, label in seeking_options.items %}
+              <option value="{{ value }}" {% if profile.seeking == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="p-notice" class="label">Notice period (days)</label>
+          <input id="p-notice" name="notice_period_days" class="input" inputmode="numeric"
+                 value="{{ profile.notice_period_days|default_if_none:'' }}">
+        </div>
+        <div class="field">
+          <label for="p-salary-min" class="label">Salary from</label>
+          <input id="p-salary-min" name="salary_min" class="input" inputmode="decimal"
+                 value="{{ profile.salary_min|default_if_none:'' }}">
+        </div>
+        <div class="field">
+          <label for="p-salary-max" class="label">Salary to</label>
+          <input id="p-salary-max" name="salary_max" class="input" inputmode="decimal"
+                 value="{{ profile.salary_max|default_if_none:'' }}">
+        </div>
+        <div class="field">
+          <label for="p-currency" class="label">Currency</label>
+          <input id="p-currency" name="currency" class="input" maxlength="3" placeholder="NPR"
+                 value="{{ profile.currency }}">
+        </div>
+        <div class="field">
+          <label for="p-period" class="label">Per</label>
+          <select id="p-period" name="period" class="input">
+            <option value="">—</option>
+            <option value="month" {% if profile.period == 'month' %}selected{% endif %}>Month</option>
+            <option value="year" {% if profile.period == 'year' %}selected{% endif %}>Year</option>
+            <option value="day" {% if profile.period == 'day' %}selected{% endif %}>Day</option>
+            <option value="hour" {% if profile.period == 'hour' %}selected{% endif %}>Hour</option>
+          </select>
+        </div>
+        <div class="flex gap-2 sm:col-span-2">
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          <button type="button" class="btn btn-ghost btn-sm" @click="editing = false">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    {# ---------- Skills ---------- #}
+    <section>
+      <div class="stack-head">
+        <h2 class="stack-title">Skills</h2>
+        <p class="text-meta text-content-subtle">{{ profile.skills|length }} on your profile</p>
+      </div>
+      <p class="mt-2 text-content-muted">
+        The only part of this page job matching reads. Each one is matched to a known
+        skill, so “JS” and “JavaScript” count as the same thing.
+      </p>
+
+      <ul class="mt-4 flex flex-wrap gap-1.5">
+        {% for skill in profile.skills %}
+          <li>
+            <span class="chip">
+              {{ skill.name }}{% if skill.years %} <span class="text-content-subtle">· {{ skill.years }}</span>{% endif %}
+              <button type="button" class="ml-1 text-content-subtle hover:text-danger-fg"
+                      aria-label="Remove {{ skill.name }}"
+                      hx-post="{{ act }}"
+                      hx-vals='{"command": "remove_skill", "skill_id": "{{ skill.id }}"}'
+                      hx-target="#profile-body" hx-swap="outerHTML">
+                {% icon "close" css_class="size-3" %}
+              </button>
+            </span>
+          </li>
+        {% empty %}
+          <li class="text-content-muted">Nothing yet. Add three and matching starts working.</li>
+        {% endfor %}
+      </ul>
+
+      <form class="mt-4 flex flex-wrap items-end gap-2"
+            hx-post="{{ act }}" hx-target="#profile-body" hx-swap="outerHTML">
+        <input type="hidden" name="command" value="add_skill">
+        <div class="field grow">
+          <label for="p-skill" class="label">Add a skill</label>
+          <input id="p-skill" name="skill" class="input" placeholder="Python, Accounting, Nursing…"
+                 autocomplete="off" required>
+        </div>
+        <div class="field w-28">
+          <label for="p-skill-years" class="label">Years</label>
+          <input id="p-skill-years" name="years" class="input" inputmode="decimal">
+        </div>
+        <button type="submit" class="btn btn-secondary btn-sm">Add</button>
+      </form>
+
+      {% if suggested_skills %}
+        <p class="overline mt-6">Often listed alongside yours</p>
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          {% for skill in suggested_skills %}
+            <button type="button" class="chip chip-toggle"
+                    hx-post="{{ act }}"
+                    hx-vals='{"command": "add_skill", "skill": "{{ skill.name }}"}'
+                    hx-target="#profile-body" hx-swap="outerHTML">
+              {% icon "plus" css_class="size-3" %}{{ skill.name }}
+            </button>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+
+    {# ---------- History ---------- #}
+    {% include "dashboard/_profile_history.html" with act=act rows=profile.experience section="experience" title="Work history" %}
+    {% include "dashboard/_profile_history.html" with act=act rows=profile.education section="education" title="Education" %}
+
+    {# ---------- Links ---------- #}
+    <section>
+      <div class="stack-head"><h2 class="stack-title">Links</h2></div>
+      <ul class="mt-4 space-y-2">
+        {% for link in profile.links %}
+          <li class="flex items-center justify-between gap-3">
+            <a href="{{ link.value }}" class="truncate hover:underline [text-underline-offset:0.2em]"
+               rel="nofollow noopener" target="_blank">{{ link.label }} — {{ link.value }}</a>
+            <button type="button" class="link-editorial text-content-subtle"
+                    hx-post="{{ act }}"
+                    hx-vals='{"command": "remove_entry", "section": "link", "entry_id": "{{ link.id }}"}'
+                    hx-target="#profile-body" hx-swap="outerHTML">Remove</button>
+          </li>
+        {% empty %}
+          <li class="text-content-muted">No links yet.</li>
+        {% endfor %}
+      </ul>
+
+      <form class="mt-4 flex flex-wrap items-end gap-2"
+            hx-post="{{ act }}" hx-target="#profile-body" hx-swap="outerHTML">
+        <input type="hidden" name="command" value="add_entry">
+        <input type="hidden" name="section" value="link">
+        <div class="field w-40">
+          <label for="p-link-label" class="label">Label</label>
+          <input id="p-link-label" name="label" class="input" placeholder="GitHub">
+        </div>
+        <div class="field grow">
+          <label for="p-link-url" class="label">Address</label>
+          <input id="p-link-url" name="url" class="input" placeholder="github.com/you" required>
+        </div>
+        <button type="submit" class="btn btn-secondary btn-sm">Add</button>
+      </form>
+    </section>
+  </div>
+
+  {# ---------- Aside: completeness and visibility ---------- #}
+  <aside class="space-y-8">
+    <section>
+      <p class="overline">Profile strength</p>
+      <p class="mt-2 text-[2rem] leading-none font-medium">{{ profile.completeness }}%</p>
+      <div class="mt-3 h-1.5 w-full rounded-full bg-surface-sunken" role="img"
+           aria-label="Profile {{ profile.completeness }} percent complete">
+        <div class="h-1.5 rounded-full bg-brand-600" style="width: {{ profile.completeness }}%"></div>
+      </div>
+      {% if profile.missing %}
+        <ul class="mt-4 space-y-2 text-meta text-content-muted">
+          {% for item in profile.missing %}
+            <li class="flex gap-2">
+              <span class="mt-0.5 shrink-0 text-content-subtle">{% icon "plus" css_class="size-3.5" %}</span>
+              <span>Add {{ item }}.</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mt-4 text-meta text-success-fg">Nothing missing.</p>
+      {% endif %}
+    </section>
+
+    <section>
+      <p class="overline">Who can see this</p>
+      <form class="mt-3 space-y-2"
+            hx-post="{{ act }}" hx-trigger="change" hx-target="#profile-body" hx-swap="outerHTML">
+        <input type="hidden" name="command" value="visibility">
+        {% for option in visibility_options %}
+          <label class="choice items-start">
+            <input type="radio" name="value" value="{{ option.key }}" class="mt-0.5 size-4 accent-brand-600"
+                   {% if profile.visibility == option.key %}checked{% endif %}>
+            <span>
+              <span class="font-medium">{{ option.label }}</span>
+              <span class="mt-0.5 block text-meta text-content-muted">{{ option.text }}</span>
+            </span>
+          </label>
+        {% endfor %}
+      </form>
+    </section>
+  </aside>
+</div>

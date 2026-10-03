@@ -1,0 +1,53 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+Upload before registering (ADR-A32).
+
+The file is stored and scanned and **nothing else**. It is not read, not
+parsed, and not analysed until an account claims it — which is what the copy
+below says, because a promise the interface does not state is a promise nobody
+knows was kept.
+{% endcomment %}
+
+{% block title %}Start with your CV — {{ site.name }}{% endblock %}
+
+{% block page_body %}
+  <section class="mx-auto max-w-xl">
+    <p class="mt-3 text-body-lg text-content-muted">
+      Upload it now and create an account to see what a hiring system reads.
+      Until you do, the file is stored and virus-scanned, and nothing opens it.
+    </p>
+
+    {% if stored %}
+      <div class="alert alert-success mt-8" role="status">
+        <span class="mt-px shrink-0 text-success-fg">{% icon "check-circle" css_class="size-5" %}</span>
+        <div>
+          <p class="alert-title">{{ message }}</p>
+          <p class="mt-0.5 text-content-muted">
+            <a href="{% url 'accounts:signup' %}" class="underline [text-underline-offset:0.2em]">Create an account</a>
+            and it will be waiting.
+          </p>
+        </div>
+      </div>
+    {% else %}
+      {% if error %}
+        <div class="alert alert-error mt-8" role="alert">
+          <span class="mt-px shrink-0 text-danger-fg">{% icon "error" css_class="size-5" %}</span>
+          <div><p class="alert-title">{{ error_title|default:"That file was not accepted" }}</p>
+            <p class="mt-0.5 text-content-muted">{{ error }}</p></div>
+        </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" class="mt-8 card">
+        {% csrf_token %}
+        <div class="card-body">
+          <div class="field">
+            <label for="guest-file" class="label">Your CV</label>
+            <input id="guest-file" type="file" name="file" class="input" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
+            <p class="hint">PDF, DOC or DOCX, up to 10 MB.</p>
+          </div>
+          <button type="submit" class="btn btn-primary mt-4">Upload it</button>
+        </div>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}

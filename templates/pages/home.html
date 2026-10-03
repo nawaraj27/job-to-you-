@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% comment %}
+Home page.
+
+Read top to bottom it is an argument, not a feature list:
+
+  photograph + promise  →  what the product can prove  →  why the problem exists
+  →  the order of the work  →  the four workspaces  →  who it is for  →  ask
+
+Each band is one idea on its own ground colour, separated by a hairline. There
+are no cards except where items really are interchangeable peers, and nothing
+floats: the only elevated object on the page is the product window in the hero,
+and that is cropped by the section edge so it reads as part of the application.
+{% endcomment %}
+
+{% block title %}{{ site.name }} — everything between your CV and your next offer{% endblock %}
+
+{% block content %}
+
+{% comment %}
+  HERO — photograph first. A careers product asks for trust before it asks for
+  a file upload, and trust transfers from people rather than from interface.
+{% endcomment %}
+<section class="relative isolate overflow-hidden bg-ink-950">
+
+  <div class="absolute inset-0 -z-10">
+    {% include "components/photo.html" with photo=photos.hero sizes="100vw" priority=1 %}
+    <div class="photo-scrim" aria-hidden="true"></div>
+  </div>
+
+  <div class="container-page relative">
+    <div class="grid gap-y-12 lg:grid-cols-12 lg:gap-x-12">
+
+      {# --- The promise --- #}
+      <div class="on-photo text-content pt-16 pb-4 sm:pt-24 lg:col-span-6 lg:pt-32 lg:pb-40 xl:pt-40">
+        <p class="eyebrow-rule">{{ hero.eyebrow }}</p>
+
+        <h1 class="mt-6 max-w-[17ch] text-display-sm sm:text-display xl:text-display-lg">
+          {{ hero.title }}
+        </h1>
+
+        <p class="lede mt-6 max-w-[46ch]">{{ hero.subtitle }}</p>
+
+        <div class="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {% if hero.primary_cta.url %}
+            <a href="{{ hero.primary_cta.url }}" class="btn btn-hero btn-lg">
+              {% icon hero.primary_cta.icon css_class="size-4.5" %}{{ hero.primary_cta.label }}
+            </a>
+          {% endif %}
+          {% if hero.secondary_cta.url %}
+            <a href="{{ hero.secondary_cta.url }}" class="btn btn-hero-ghost btn-lg">
+              {% icon hero.secondary_cta.icon css_class="size-4.5" %}{{ hero.secondary_cta.label }}
+            </a>
+          {% endif %}
+        </div>
+
+        <p class="mt-5 text-meta text-content-subtle">{{ hero.note }}</p>
+      </div>
+
+      {% comment %}
+        The product, cropped by the section edge on wide screens and shown in
+        full inside the hero on narrow ones — one band instead of two, because
+        a duplicate of the same component further down the page was the
+        homepage repeating itself.
+      {% endcomment %}
+      <div class="pb-12 lg:col-span-6 lg:col-start-7 lg:flex lg:items-end lg:pb-0 lg:pt-32 xl:pt-40">
+        <div class="w-full lg:translate-y-px">
+          {% include "components/report_preview.html" with preview=hero_preview %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <figcaption class="container-page relative pb-4 lg:hidden">
+    <span class="on-photo"><span class="photo-credit">Photograph: {{ photos.hero.credit }}</span></span>
+  </figcaption>
+</section>
+
+{% comment %}
+  THE FACTS — placed immediately after the promise so the first thing following
+  a claim is something checkable. No user counts, no logo wall.
+{% endcomment %}
+<section class="border-b border-hairline">
+  <div class="container-page">
+    <dl class="grid gap-x-10 gap-y-10 py-12 sm:grid-cols-2 lg:grid-cols-4 lg:py-14">
+      {% comment %}
+        Column-reverse so the figure sits above its label visually while the
+        <dt> still precedes its <dd> in the document — a screen reader hears
+        "Read the way ATS read: PDF · DOCX", and nothing is announced twice.
+      {% endcomment %}
+      {% for point in proof_points %}
+        <div class="flex flex-col-reverse border-t-2 border-hairline-strong pt-5">
+          <dt class="mt-1.5 text-sm font-medium">
+            {{ point.label }}
+            <span class="mt-1 block text-meta font-normal leading-relaxed text-content-muted">{{ point.note }}</span>
+          </dt>
+          <dd class="stat-value">{{ point.value }}</dd>
+        </div>
+      {% endfor %}
+    </dl>
+  </div>
+</section>
+
+{% comment %}
+  STORY — the argument. A reader who has not accepted the problem reads a
+  feature list as noise, so this sits above every capability section.
+{% endcomment %}
+<section class="section border-b border-hairline bg-surface-sunken">
+  <div class="container-page">
+    <div class="grid items-center gap-10 lg:grid-cols-12 lg:gap-16">
+
+      <figure class="lg:col-span-5">
+        <div class="photo aspect-[4/5] sm:aspect-[3/2] lg:aspect-[4/5]">
+          {% include "components/photo.html" with photo=photos.story sizes="(min-width: 1024px) 40vw, 100vw" %}
+        </div>
+        <figcaption class="photo-credit mt-2.5">Photograph: {{ photos.story.credit }}</figcaption>
+      </figure>
+
+      <div class="lg:col-span-7 lg:pl-4">
+        <p class="eyebrow-rule">{{ story.eyebrow }}</p>
+
+        <h2 class="mt-6 max-w-[20ch] text-display-sm sm:text-[2.75rem] sm:leading-[1.1]">
+          {{ story.title }}
+        </h2>
+
+        {% for paragraph in story.body %}
+          <p class="measure mt-5 text-body-lg leading-relaxed text-content-muted sm:text-base">
+            {{ paragraph }}
+          </p>
+        {% endfor %}
+
+        <blockquote class="pullquote mt-8 max-w-[34ch]">{{ story.quote }}</blockquote>
+
+        {% if hero.primary_cta.url %}
+          <a href="{{ hero.primary_cta.url }}" class="link-editorial mt-8">
+            {{ story.link_label }}{% icon "arrow-right" css_class="size-4" %}
+          </a>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{% comment %}
+  JOURNEY — six steps are too many for a card grid, and a card grid says "these
+  are interchangeable", which an ordered arc is not. Numbered rules instead.
+{% endcomment %}
+<section class="section border-b border-hairline">
+  <div class="container-page">
+    <div class="grid gap-10 lg:grid-cols-12 lg:gap-16">
+
+      <div class="lg:col-span-4">
+        <p class="eyebrow-rule">How it works</p>
+        <h2 class="mt-6 text-display-sm">Five steps, in the order they actually happen.</h2>
+        <p class="mt-5 max-w-[38ch] text-body-lg leading-relaxed text-content-muted">
+          Each one is its own screen with its own page here. You are never dropped
+          into a dashboard of everything at once and left to work out where to begin.
+        </p>
+      </div>
+
+      <ol class="lg:col-span-7 lg:col-start-6">
+        {% for step in journey %}
+          <li class="step-row group relative {% if forloop.last %}border-b border-hairline{% endif %}">
+            {% if step.url %}
+              <a href="{{ step.url }}" class="absolute inset-0" aria-label="{{ step.title }}"></a>
+            {% endif %}
+
+            <span class="step-number" aria-hidden="true">{{ step.step }}</span>
+
+            <div class="min-w-0">
+              <h3 class="flex items-center gap-2 text-base">
+                {{ step.title }}
+                {% if step.url %}
+                  {% icon "arrow-right" css_class="size-4 text-content-subtle opacity-0 transition-opacity group-hover:opacity-100" %}
+                {% endif %}
+              </h3>
+              <p class="mt-2 max-w-[52ch] text-body-lg leading-relaxed text-content-muted">
+                {{ step.description }}
+              </p>
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+
+    </div>
+  </div>
+</section>
+
+{% comment %}
+  CAPABILITIES — four peers, so here a grid is honest. Still no shadows: a
+  hairline and generous padding separate them perfectly well.
+{% endcomment %}
+<section class="section border-b border-hairline bg-surface-sunken">
+  <div class="container-page">
+
+    <div class="max-w-[46ch]">
+      <p class="eyebrow-rule">What's inside</p>
+      <h2 class="mt-6 text-display-sm">Four tools, one record of your career.</h2>
+      <p class="mt-5 text-body-lg leading-relaxed text-content-muted">
+        They read the same profile, so improving your CV changes which roles you
+        are matched with, and each one has a page of its own explaining exactly
+        what it does.
+      </p>
+    </div>
+
+    <div class="mt-14 grid gap-px overflow-hidden rounded-xl border border-hairline bg-hairline md:grid-cols-2">
+      {% for item in capabilities %}
+        <article class="flex flex-col bg-surface p-7 transition-colors hover:bg-surface-sunken md:p-9">
+          <span class="text-content-subtle">{% icon item.icon css_class="size-6" %}</span>
+          <h3 class="mt-5 text-lg">{{ item.title }}</h3>
+          <p class="mt-3 flex-1 text-body-lg leading-relaxed text-content-muted">
+            {{ item.description }}
+          </p>
+
+          {% if item.url %}
+            <a href="{{ item.url }}" class="link-editorial mt-6">
+              {{ item.link_label }}{% icon "arrow-right" css_class="size-4" %}
+            </a>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+
+  </div>
+</section>
+
+{# ============================ AUDIENCES ============================ #}
+<section class="section border-b border-hairline">
+  <div class="container-page">
+    <div class="grid gap-10 lg:grid-cols-12 lg:gap-16">
+
+      <div class="lg:col-span-5">
+        <figure>
+          <div class="photo aspect-[3/2] lg:aspect-[5/6]">
+            {% include "components/photo.html" with photo=photos.audiences sizes="(min-width: 1024px) 40vw, 100vw" %}
+          </div>
+          <figcaption class="photo-credit mt-2.5">Photograph: {{ photos.audiences.credit }}</figcaption>
+        </figure>
+      </div>
+
+      <div class="lg:col-span-6 lg:col-start-7 lg:self-center">
+        <p class="eyebrow-rule">Who it's for</p>
+        <h2 class="mt-6 text-display-sm">Two sides of the same hire.</h2>
+
+        <div class="mt-10 divide-y divide-hairline border-y border-hairline">
+          {% for audience in audiences %}
+            <div class="py-7">
+              <h3 class="text-lg">{{ audience.title }}</h3>
+              <p class="mt-2 max-w-[48ch] text-body-lg leading-relaxed text-content-muted">
+                {{ audience.description }}
+              </p>
+              {% if audience.url %}
+                <a href="{{ audience.url }}" class="link-editorial mt-4">
+                  {{ audience.link_label }}{% icon "arrow-right" css_class="size-4" %}
+                </a>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{% comment %}
+  CLOSE — the ask, on the photograph the whole page has been arguing toward.
+{% endcomment %}
+<section class="relative isolate overflow-hidden bg-ink-950">
+  <div class="absolute inset-0 -z-10">
+    {% include "components/photo.html" with photo=photos.closing sizes="100vw" %}
+    <div class="photo-scrim-even" aria-hidden="true"></div>
+  </div>
+
+  <div class="container-page relative">
+    <div class="on-photo text-content mx-auto max-w-2xl py-20 text-center md:py-28">
+      <h2 class="text-display-sm sm:text-display">Start with the CV you already have.</h2>
+      <p class="lede mx-auto mt-5">
+        Upload it, see what a hiring system sees, and fix the parts that are
+        costing you interviews. It takes about two minutes.
+      </p>
+
+      <div class="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+        {% if hero.primary_cta.url %}
+          <a href="{{ hero.primary_cta.url }}" class="btn btn-hero btn-lg">
+            {% icon hero.primary_cta.icon css_class="size-4.5" %}{{ hero.primary_cta.label }}
+          </a>
+        {% endif %}
+        <a href="{% url 'core:pricing' %}" class="btn btn-hero-ghost btn-lg">See pricing</a>
+      </div>
+
+      <p class="mt-5 text-meta text-content-subtle">{{ hero.note }}</p>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

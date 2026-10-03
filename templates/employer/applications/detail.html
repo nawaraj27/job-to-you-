@@ -1,0 +1,471 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+One application.
+
+The layout follows what a recruiter actually does in order: read the person,
+decide, then record why. Contact details are absent from the page — not hidden
+by CSS, absent — until the application reaches a stage that unlocks them
+(ADR-A34); the template cannot render what the view did not put in the context.
+
+Notes and ratings are company-internal permanently (FR-6.11). The page says so
+where they are written, because a person is more careful when they know who
+reads it — and less useful when they suspect the candidate might.
+{% endcomment %}
+
+{% block title %}{{ application.candidate.user.get_full_name }} - {{ company.name }}{% endblock %}
+{% block page_heading %}{{ application.candidate.user.get_full_name|default:"Candidate" }}{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    {{ application.job.title }} · applied {{ application.applied_at|date:"j M Y" }} ·
+    {{ application.stage.label }}
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <div class="grid gap-8 lg:grid-cols-[1fr_20rem]">
+    <div class="min-w-0 space-y-8">
+
+      {# --- What they sent --------------------------------------------- #}
+      <section>
+        <h2 class="text-lg font-semibold">What they sent</h2>
+        <dl class="mt-3 space-y-3 text-sm">
+          <div class="flex flex-wrap justify-between gap-3 border-b border-hairline pb-2">
+            <dt class="text-content-subtle">CV</dt>
+            <dd>
+              Version {{ application.resume_version.version_no }}
+              {% comment %}
+                The hash of the exact file that was sent (ADR-A8). "The CV I
+                sent you" has to mean one thing months later, when the
+                candidate's live CV has moved on.
+              {% endcomment %}
+              <span class="ml-2 font-mono text-meta text-content-subtle">
+                {{ application.submitted_render_sha256|slice:":12" }}
+              </span>
+            </dd>
+          </div>
+          {% if application.cover_letter %}
+            <div class="border-b border-hairline pb-2">
+              <dt class="text-content-subtle">Cover letter</dt>
+              <dd class="mt-1 whitespace-pre-line">{{ application.cover_letter.content }}</dd>
+            </div>
+          {% endif %}
+          {% for row in screening_answers %}
+            <div class="border-b border-hairline pb-2">
+              <dt class="text-content-subtle">{{ row.question }}</dt>
+              <dd class="mt-1 whitespace-pre-line">{{ row.answer }}</dd>
+            </div>
+          {% endfor %}
+        </dl>
+      </section>
+
+      {# --- Match (FR-8.4, FR-8.5) -------------------------------------- #}
+      {% if match %}
+        <section>
+          <h2 class="text-lg font-semibold">Match at the time they applied</h2>
+          <p class="mt-1 text-meta text-content-subtle">
+            Worked out from their profile when they submitted, and never
+            recomputed since, so this is the number that was true then, not a
+            number that moves as they edit their profile.
+            {% if match_stale %}
+              It was produced by an earlier version of the scorer, so do not
+              compare it directly with a newer one.
+            {% endif %}
+          </p>
+
+          <div class="mt-4 flex items-start gap-4">
+            {% include "components/score_ring.html" with value=match.score size=64 label="Match score" %}
+            <div class="min-w-0 flex-1">
+              <p class="text-body-lg">{{ match.label }}</p>
+              <ul class="mt-3 space-y-2">
+                {% for component in match.components %}
+                  <li>
+                    <div class="flex items-baseline justify-between gap-3 text-meta">
+                      <span>{{ component.label }}</span>
+                      <span class="text-content-subtle tabular-nums">{{ component.points|floatformat:"-1" }} / {{ component.weight|floatformat:"-1" }}</span>
+                    </div>
+                    <p class="text-caption text-content-muted">{{ component.note }}</p>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </section>
+      {% endif %}
+
+      {# --- Contact (ADR-A34) ------------------------------------------ #}
+      <section>
+        <h2 class="text-lg font-semibold">Contact</h2>
+        {% if can_see_contact %}
+          <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between gap-3">
+              <dt class="text-content-subtle">Email</dt>
+              <dd>{{ application.candidate.user.email }}</dd>
+            </div>
+            {% if application.candidate.phone %}
+              <div class="flex justify-between gap-3">
+                <dt class="text-content-subtle">Phone</dt>
+                <dd>{{ application.candidate.phone }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+          <p class="mt-2 text-meta text-content-subtle">
+            Unlocked {{ application.contact_revealed_at|date:"j M Y" }}. The candidate was told.
+          </p>
+        {% else %}
+          <p class="mt-2 text-sm text-content-muted">
+            Contact details unlock when this application reaches the interview stage. You can
+            unlock them now with a reason. The candidate is told either way.
+          </p>
+          {% if can_decide %}
+            <form method="post" action="{% url 'employer:application_act' company.slug application.public_id %}"
+                  class="mt-3 flex flex-wrap items-end gap-3">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="reveal_contact">
+              <div class="grow">
+                <label class="label" for="reveal-reason">Why now</label>
+                <input class="input" id="reveal-reason" name="reason" required maxlength="200"
+                       placeholder="Arranging a call this week">
+              </div>
+              <button class="btn btn-secondary" type="submit">Unlock contact details</button>
+            </form>
+          {% endif %}
+        {% endif %}
+      </section>
+
+      {# --- Notes (internal) ------------------------------------------- #}
+      <section>
+        <h2 class="text-lg font-semibold">Notes</h2>
+        <p class="mt-1 text-sm text-content-muted">
+          Company-internal, permanently. The candidate never sees these.
+        </p>
+
+        <ul class="mt-4 divide-y divide-hairline">
+          {% for note in notes %}
+            <li class="py-3">
+              <p class="whitespace-pre-line text-sm">{{ note.body }}</p>
+              <p class="mt-1 flex items-center gap-2 text-meta text-content-subtle">
+                {{ note.author.get_full_name|default:"Someone" }} ·
+                {{ note.created_at|timesince }} ago
+                {% if note.author_id == user.pk and can_comment %}
+                  <form method="post"
+                        action="{% url 'employer:application_act' company.slug application.public_id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_note">
+                    <input type="hidden" name="note_id" value="{{ note.pk }}">
+                    <button class="underline [text-underline-offset:0.2em]" type="submit">delete</button>
+                  </form>
+                {% endif %}
+              </p>
+            </li>
+          {% empty %}
+            <li class="py-3 text-sm text-content-subtle">No notes yet.</li>
+          {% endfor %}
+        </ul>
+
+        {% if can_comment %}
+        <form method="post" action="{% url 'employer:application_act' company.slug application.public_id %}"
+              class="mt-4 space-y-3">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="note">
+          <label class="label" for="note-body">Add a note</label>
+          <textarea class="input" id="note-body" name="body" rows="3" required></textarea>
+          <div class="flex flex-wrap items-end gap-3">
+            <div>
+              <label class="label" for="note-mentions">Mention</label>
+              <select class="input" id="note-mentions" name="mentions" multiple size="3">
+                {% for member in team %}
+                  <option value="{{ member.pk }}">{{ member.user.get_full_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button class="btn btn-secondary" type="submit">Save note</button>
+          </div>
+        </form>
+        {% endif %}
+      </section>
+
+      {# --- Timeline (FR-6.4) ------------------------------------------ #}
+      <section>
+        <h2 class="text-lg font-semibold">Activity</h2>
+        <p class="mt-1 text-sm text-content-muted">
+          Everything that happened. The candidate sees the entries marked shared.
+        </p>
+        <ol class="mt-4 divide-y divide-hairline">
+          {% for entry in timeline %}
+            <li class="flex flex-wrap items-baseline gap-x-3 py-2.5 text-sm">
+              {% comment %}
+                Words, not event codes. The log read "application.submitted —
+                → New", which is the database talking to a recruiter.
+              {% endcomment %}
+              <span class="font-medium">
+                {% if entry.type == "application.submitted" %}Applied{% if entry.to_stage %} · {{ entry.to_stage.label }}{% endif %}
+                {% elif entry.type == "application.stage_changed" %}Moved {{ entry.from_stage.label|default:"" }} → {{ entry.to_stage.label|default:"" }}
+                {% elif entry.type == "application.withdrawn" %}Candidate withdrew
+                {% elif entry.type == "application.contact_revealed" %}Contact details unlocked
+                {% elif entry.type == "offer.sent" %}Offer sent
+                {% elif entry.type == "offer.decided" %}Offer {{ entry.payload.state }}
+                {% elif entry.type == "offer.withdrawn" %}Offer withdrawn
+                {% elif entry.type == "offer.expired" %}Offer expired
+                {% elif entry.type == "interview.completed" %}Interview completed
+                {% else %}{{ entry.type }}{% endif %}
+              </span>
+              <span class="text-meta text-content-subtle">
+                {{ entry.get_actor_kind_display }} · {{ entry.created_at|timesince }} ago
+                {% if entry.visible_to_candidate %}· shared{% endif %}
+              </span>
+              {% if entry.payload.reason %}
+                <span class="w-full text-meta text-content-muted">{{ entry.payload.reason }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      </section>
+    </div>
+
+    {# --- Decision column --------------------------------------------- #}
+    <aside class="space-y-4">
+      <div class="card p-5">
+        <h2 class="font-medium">Move</h2>
+        {% if application.is_withdrawn %}
+          {% comment %}
+            The form was offered on a withdrawn application and every attempt
+            ended in an error. Only the candidate can undo a withdrawal, by
+            applying again.
+          {% endcomment %}
+          <p class="mt-2 text-sm text-content-muted" role="status">
+            The candidate withdrew{% if application.withdrawn_at %} on {{ application.withdrawn_at|date:"j M Y" }}{% endif %}.
+            It cannot be moved; they can apply again if they want to.
+          </p>
+        {% elif not can_write %}
+          {% comment %}
+            Readable is not writable (SRS §2.3). The form was offered to everybody
+            who could open the page, and a Viewer's move went through.
+          {% endcomment %}
+          <p class="mt-2 text-sm text-content-muted" role="status">{{ read_only_reason }}</p>
+        {% else %}
+        <form method="post" action="{% url 'employer:application_act' company.slug application.public_id %}"
+              class="mt-3 space-y-3">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="move">
+          <label class="sr-only" for="stage">Stage</label>
+          <select class="input" id="stage" name="stage">
+            {% for stage in stages %}
+              <option value="{{ stage.key }}"
+                      {% if stage.pk == application.stage_id %}disabled{% endif %}>{{ stage.label }}</option>
+            {% endfor %}
+          </select>
+          <label class="label" for="move-reason">Reason (required when closing)</label>
+          <input class="input" id="move-reason" name="reason" maxlength="60">
+          <label class="label" for="move-message">Message to the candidate</label>
+          <textarea class="input" id="move-message" name="message" rows="3"></textarea>
+          <button class="btn btn-primary w-full" type="submit">Move</button>
+        </form>
+        {% endif %}
+      </div>
+
+      {% comment %}
+        The only way into a conversation. Opening one from here is what makes
+        the visibility grant a certainty rather than a check (SRS §12).
+      {% endcomment %}
+      {% if can_message %}
+      <div class="card p-5">
+        <h2 class="font-medium">Message</h2>
+        <form method="post"
+              action="{% url 'employer:application_message' company.slug application.public_id %}"
+              class="mt-3 space-y-2">
+          {% csrf_token %}
+          <label class="sr-only" for="message-body">Message</label>
+          <textarea class="input" id="message-body" name="body" rows="3" required
+                    placeholder="Ask a question, or arrange a call"></textarea>
+          <button class="btn btn-secondary w-full" type="submit">Send message</button>
+        </form>
+        <p class="mt-2 text-meta text-content-subtle">
+          They can mute, block or report the thread. Blocking withdraws your access to them.
+        </p>
+      </div>
+      {% endif %}
+
+      {% if accepted_offer and not application.is_closed_stage %}
+        {% comment %}
+          Accepted, and nothing had said the hire still had to be recorded: the
+          application sat at its old stage with a quiet "Accepted" in the log.
+          The move stays the employer's to make.
+        {% endcomment %}
+        <div class="card p-5" role="status">
+          <h2 class="font-medium">The candidate accepted your offer</h2>
+          <p class="mt-1 text-sm text-content-muted">
+            {{ accepted_offer.currency }} {{ accepted_offer.salary }} per {{ accepted_offer.period }}{% if accepted_offer.start_date %}, starting {{ accepted_offer.start_date|date:"j M Y" }}{% endif %}.
+            Move the application to Hired to record it.
+          </p>
+        </div>
+      {% endif %}
+      {% if can_offer %}
+        <div class="card p-5">
+          <h2 class="font-medium">Offer</h2>
+          {% if offer %}
+            <p class="mt-2 text-sm text-content-muted">
+              {{ offer.get_state_display }} · {{ offer.currency }} {{ offer.salary }}
+              {% if offer.expires_at %}· expires {{ offer.expires_at|date:"j M Y" }}{% endif %}
+            </p>
+            {% if offer.attachment %}
+              <p class="mt-1 text-sm">
+                {% if offer_document_url %}
+                  <a class="underline [text-underline-offset:0.2em]" href="{{ offer_document_url }}">Offer letter: {{ offer.attachment.filename }}</a>
+                {% else %}
+                  Offer letter {{ offer.attachment.filename }} is being checked and cannot be opened yet.
+                {% endif %}
+              </p>
+            {% endif %}
+            <form method="post"
+                  action="{% url 'employer:application_offer' company.slug application.public_id %}"
+                  class="mt-3 space-y-2">
+              {% csrf_token %}
+              {% if offer.state == "draft" %}
+                <button class="btn btn-primary w-full" type="submit" name="action" value="send">
+                  Send offer
+                </button>
+              {% endif %}
+              <button class="btn btn-quiet w-full" type="submit" name="action" value="withdraw">
+                Withdraw offer
+              </button>
+            </form>
+          {% else %}
+            <form method="post"
+                  action="{% url 'employer:application_offer' company.slug application.public_id %}"
+                  class="mt-3 space-y-3" enctype="multipart/form-data">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="draft">
+              <label class="label" for="offer-salary">Salary</label>
+              <input class="input" id="offer-salary" name="salary" inputmode="decimal" required>
+              <div class="flex gap-2">
+                <input class="input" name="currency" maxlength="3" placeholder="NPR" required
+                       aria-label="Currency">
+                <select class="input" name="period" aria-label="Pay period">
+                  <option value="year">year</option>
+                  <option value="month">month</option>
+                </select>
+              </div>
+              <label class="label" for="offer-start">Start date</label>
+              <input class="input" id="offer-start" name="start_date" type="date">
+              <label class="label" for="offer-expires">Open until</label>
+              <input class="input" id="offer-expires" name="expires_on" type="date"
+                     aria-describedby="offer-expires-hint">
+              <p class="text-caption text-content-subtle" id="offer-expires-hint">Leave empty for 14 days.</p>
+              <label class="label" for="offer-message">Message to the candidate</label>
+              <textarea class="input" id="offer-message" name="message" rows="3" maxlength="4000"></textarea>
+              <label class="label" for="offer-document">Offer letter (PDF or Word, optional)</label>
+              <input class="input" id="offer-document" name="document" type="file"
+                     accept=".pdf,.doc,.docx,application/pdf" aria-describedby="offer-document-hint">
+              <p class="text-caption text-content-subtle" id="offer-document-hint">
+                Your team can open it now; the candidate can once you send the offer.
+              </p>
+              <button class="btn btn-secondary w-full" type="submit">Draft offer</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <div class="card p-5">
+        <h2 class="font-medium">{% if can_comment %}Your rating{% else %}Ratings{% endif %}</h2>
+        {% if can_comment %}
+        <form method="post" action="{% url 'employer:application_act' company.slug application.public_id %}"
+              class="mt-3 flex items-end gap-2">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="rate">
+          <label class="sr-only" for="score">Score</label>
+          <select class="input" id="score" name="score">
+            {% for value in "12345"|make_list %}
+              <option value="{{ value }}"
+                      {% if my_rating and my_rating.score|stringformat:"s" == value %}selected{% endif %}>
+                {{ value }}
+              </option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-secondary" type="submit">Save</button>
+        </form>
+        {% elif not ratings %}
+          <p class="mt-2 text-sm text-content-subtle">No ratings yet.</p>
+        {% endif %}
+        {% if ratings %}
+          <ul class="mt-3 space-y-1 text-meta text-content-muted">
+            {% for rating in ratings %}
+              <li>{{ rating.rater.get_full_name }}: {{ rating.score }}/5</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+
+      <div class="card p-5">
+        <h2 class="font-medium">Tags</h2>
+        <ul class="mt-2 flex flex-wrap gap-1.5">
+          {% for link in application.tag_links.all %}
+            <li>
+              {% if can_write %}
+              <form method="post"
+                    action="{% url 'employer:application_act' company.slug application.public_id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="untag">
+                <input type="hidden" name="tag_id" value="{{ link.tag_id }}">
+                <button class="chip chip-removable" type="submit"
+                        aria-label="Remove tag {{ link.tag.name }}">{{ link.tag.name }}</button>
+              </form>
+              {% else %}
+                <span class="chip">{{ link.tag.name }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+        {% if can_write %}
+        <form method="post" action="{% url 'employer:application_act' company.slug application.public_id %}"
+              class="mt-3 flex gap-2">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="tag">
+          <label class="sr-only" for="tag">Tag</label>
+          <input class="input" id="tag" name="tag" maxlength="40" placeholder="Strong on SQL">
+          <button class="btn btn-quiet" type="submit">Add tag</button>
+        </form>
+        {% endif %}
+      </div>
+
+      {% if prior %}
+        {% comment %}
+          Candidate rediscovery (FR-6.12). "We have spoken to this person
+          before" is the most useful thing a recruiter can know on opening an
+          application, and it is one query.
+        {% endcomment %}
+        <div class="card p-5">
+          <h2 class="font-medium">Applied before</h2>
+          <ul class="mt-2 space-y-1 text-meta text-content-muted">
+            {% for other in prior %}
+              <li>
+                <a class="underline [text-underline-offset:0.2em]"
+                   href="{% url 'employer:application_detail' company.slug other.public_id %}">
+                  {{ other.job.title }}
+                </a>
+                · {{ other.stage.label }} · {{ other.applied_at|date:"M Y" }}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if pools %}
+        <div class="card p-5">
+          <h2 class="font-medium">Save to a pool</h2>
+          <form method="post" action="{% url 'employer:application_act' company.slug application.public_id %}"
+                class="mt-3 flex gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="pool">
+            <label class="sr-only" for="pool">Pool</label>
+            <select class="input" id="pool" name="pool_id">
+              {% for pool in pools %}
+                <option value="{{ pool.pk }}">{{ pool.name }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-quiet" type="submit">Save</button>
+          </form>
+        </div>
+      {% endif %}
+    </aside>
+  </div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Joining a live interview (FR-10.5).
+
+The room opens fifteen minutes before and closes fifteen after. Earlier it is a
+place to loiter; later, somebody who mistook the hour joins an interview that
+already ended and finds an empty room, which is worse than being told.
+{% endcomment %}
+
+{% block title %}Join your interview — {{ site.name }}{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-xl stack">
+    <div>
+      <p class="overline">{{ session.application.job.company.name }}</p>
+      <h1 class="mt-1 text-display">{{ session.application.job.title }}</h1>
+      <p class="mt-1 text-meta text-content-subtle">
+        {{ session.scheduled_at|date:"l j F, H:i" }}
+      </p>
+    </div>
+
+    {% if error %}
+      <div class="card">
+        <div class="card-body">
+          <p class="text-content-muted">{{ error }}</p>
+          <p class="mt-2 text-caption text-content-subtle">
+            Come back within fifteen minutes of the time above and the link to the
+            room appears here.
+          </p>
+        </div>
+      </div>
+    {% else %}
+      <div class="card">
+        <div class="card-body">
+          <p class="text-content-muted">
+            The room is open. Everybody joins through this page. The link is yours and
+            is not worth sharing, because it is tied to this interview.
+          </p>
+          <a href="{{ join_url }}" class="btn btn-primary mt-4" rel="noopener" target="_blank">
+            Join the room
+          </a>
+        </div>
+      </div>
+    {% endif %}
+
+    <p class="text-caption text-content-subtle">
+      <a href="{% url 'interviews:hub' %}" class="link-editorial">Back to interviews</a>
+    </p>
+  </div>
+{% endblock %}

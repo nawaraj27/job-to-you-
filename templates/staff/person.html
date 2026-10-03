@@ -1,0 +1,79 @@
+{% extends "layouts/page.html" %}
+{% comment %}
+One account (SRS §2.3). Support reads it and can resend a confirmation link;
+suspending or reinstating needs a moderator, and staff accounts need a
+superadmin (`accounts.services.moderation`).
+{% endcomment %}
+
+{% block title %}{{ person.email }} - staff{% endblock %}
+{% block page_heading %}{{ person.full_name|default:person.email }}{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted break-all">{{ person.email }} · <a href="{% url 'staff:people' %}" class="link-editorial">Search again</a></p>
+{% endblock %}
+
+{% block page_body %}
+  {% include "staff/_tabs.html" %}
+
+  <section class="stack" aria-labelledby="p-record">
+    <div class="stack-head"><h2 id="p-record" class="stack-title">Record</h2></div>
+    <dl class="mt-3 grid gap-4 sm:grid-cols-2">
+      <div class="card card-body"><dt class="overline">Account</dt><dd class="mt-1">{% if person.is_active %}Active{% else %}Suspended{% endif %}</dd></div>
+      <div class="card card-body"><dt class="overline">Email</dt><dd class="mt-1">{% if address.verified_at %}Confirmed {{ address.verified_at|date:"j M Y" }}{% else %}Not confirmed{% endif %}</dd></div>
+      <div class="card card-body"><dt class="overline">Signed in on</dt><dd class="mt-1 tabular-nums">{{ sessions }} session{{ sessions|pluralize }}</dd></div>
+      <div class="card card-body"><dt class="overline">Platform staff</dt><dd class="mt-1">{{ person_staff_level|default:"No" }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="stack mt-10" aria-labelledby="p-companies">
+    <div class="stack-head"><h2 id="p-companies" class="stack-title">Companies</h2></div>
+    <ul class="mt-3 divide-y divide-hairline">
+      {% for membership in memberships %}
+        <li class="flex flex-wrap justify-between gap-3 py-3">
+          <a href="{% url 'staff:company' membership.company.slug %}" class="link-editorial">{{ membership.company.name }}</a>
+          <span class="text-meta text-content-muted">{{ membership.get_role_display }}</span>
+        </li>
+      {% empty %}
+        <li class="py-3 text-content-muted">Not a member of any company.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="stack mt-10" aria-labelledby="p-actions">
+    <div class="stack-head"><h2 id="p-actions" class="stack-title">Actions</h2></div>
+    {% if address and not address.verified_at %}
+      <form method="post" class="mt-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="resend_verification">
+        <button type="submit" class="btn btn-secondary">Resend confirmation link</button>
+      </form>
+    {% endif %}
+    {% if not person_staff_level and not person.is_staff and person.is_active %}
+      <form method="post" class="mt-6 space-y-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="impersonate">
+        <div class="field">
+          <label for="p-imp-reason" class="label">Why you need to see this account as its owner</label>
+          <input id="p-imp-reason" name="reason" class="input" required maxlength="300">
+          <p class="hint">Up to 60 minutes. Every action is recorded as you, on their behalf. Security settings and their data stay closed.</p>
+        </div>
+        <button type="submit" class="btn btn-secondary">View as {{ person.email }}</button>
+      </form>
+    {% endif %}
+    {% if can_moderate %}
+      <form method="post" class="mt-6 space-y-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="{% if person.is_active %}suspend{% else %}reinstate{% endif %}">
+        <div class="field">
+          <label for="p-reason" class="label">{% if person.is_active %}Why this account is being suspended{% else %}Why it is being reinstated{% endif %}</label>
+          <textarea id="p-reason" name="reason" class="textarea" rows="2" required maxlength="500"></textarea>
+          {% if person.is_active %}<p class="hint">They are signed out everywhere and cannot sign in until reinstated.</p>{% endif %}
+        </div>
+        <button type="submit" class="btn {% if person.is_active %}btn-danger{% else %}btn-secondary{% endif %}">
+          {% if person.is_active %}Suspend account{% else %}Reinstate account{% endif %}
+        </button>
+      </form>
+    {% else %}
+      <p class="mt-4 text-content-muted">Suspending an account needs moderator access.</p>
+    {% endif %}
+  </section>
+{% endblock %}

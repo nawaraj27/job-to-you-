@@ -1,0 +1,28 @@
+{% if flash_restriction %}
+  <div class="mb-6">{% include "components/restriction.html" with restriction=flash_restriction %}</div>
+{% elif flash_error %}
+  <div class="alert alert-error mb-6" role="alert">
+    <span class="mt-px shrink-0 text-danger-fg">{% icon "error" css_class="size-5" %}</span>
+    <div>
+      <p class="alert-title">That didn't work</p>
+      <p class="mt-0.5 text-content-muted">{{ flash_error }}</p>
+    </div>
+  </div>
+{% elif flash_message %}
+  {% comment %}
+    `data-announce` rather than a live region of its own. This paragraph
+    arrives in an htmx swap, and a live region that is inserted together with
+    its text is announced unreliably — so the text is copied into the one
+    persistent region in `base.html` instead (app.js). The error above needs
+    no such help: `role="alert"` is announced when it appears.
+
+    Without this, every confirmation on a CV screen was silent: "Made
+    primary", "Version saved", "Deleted" all landed as a line of green text
+    and nothing else. `CareerAI.announce` was written for exactly this and had
+    no caller anywhere in the product.
+  {% endcomment %}
+  <p class="mb-6 flex items-center gap-2 text-meta text-success-fg"
+     data-announce="{{ flash_message }}">
+    {% icon "check-circle" css_class="size-4" %}{{ flash_message }}
+  </p>
+{% endif %}

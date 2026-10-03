@@ -1,0 +1,127 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+The applicant pipeline.
+
+A column per stage, because the question a recruiter opens this page with is
+"who is where", and a flat list sorted by date answers a different one. Bulk
+selection spans columns: moving eleven people from Reviewing to Shortlisted is
+the single most repeated action in hiring software, and it should be one click.
+{% endcomment %}
+
+{% block title %}Applicants - {{ company.name }}{% endblock %}
+{% block page_heading %}Applicants{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    {{ counts.live }} live, {{ counts.interviewing }} interviewing, {{ counts.closed }} closed.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <form method="get" class="mb-5 flex flex-wrap items-end gap-3">
+    <div>
+      <label class="label" for="job-filter">Posting</label>
+      <select class="input" id="job-filter" name="job" onchange="this.form.submit()">
+        <option value="">Every posting</option>
+        {% for posting in jobs %}
+          <option value="{{ posting.public_id }}"
+                  {% if job and posting.pk == job.pk %}selected{% endif %}>{{ posting.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% comment %}
+      Ordering by match reads the score frozen when each person applied
+      (FR-8.4, FR-8.5) — never a fresh one. Two candidates being compared must
+      be compared on the numbers that existed at the time, or the ranking moves
+      under the reader between one visit and the next.
+    {% endcomment %}
+    <div>
+      <label class="label" for="board-order">Order by</label>
+      <select class="input" id="board-order" name="order" onchange="this.form.submit()">
+        <option value="recent" {% if order != "match" %}selected{% endif %}>Most recent</option>
+        <option value="match" {% if order == "match" %}selected{% endif %}>Match score</option>
+      </select>
+    </div>
+    <noscript><button class="btn btn-secondary" type="submit">Filter</button></noscript>
+    {% if can_open_pipeline %}
+      <a class="btn btn-quiet ml-auto" href="{% url 'employer:pipeline' company.slug %}">{% if can_edit_pipeline %}Edit pipeline{% else %}Pipeline stages{% endif %}</a>
+    {% endif %}
+    {% if can_pools %}<a class="btn btn-quiet" href="{% url 'employer:pools' company.slug %}">Talent pools</a>{% endif %}
+  </form>
+
+  <form method="post">
+    {% csrf_token %}
+
+    {% comment %}
+      The bulk bar is above the board rather than floating: a control that
+      appears only after a selection is a control people do not know exists.
+    {% endcomment %}
+    {% if can_bulk %}
+    <div class="card mb-5 flex flex-wrap items-end gap-3 p-4">
+      <div>
+        <label class="label" for="bulk-stage">Move selected to</label>
+        <select class="input" id="bulk-stage" name="stage">
+          {% for stage in stages %}
+            <option value="{{ stage.key }}">{{ stage.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="grow">
+        <label class="label" for="bulk-reason">Reason (required when closing)</label>
+        <input class="input" id="bulk-reason" name="reason" maxlength="60"
+               placeholder="Not enough experience with Django">
+      </div>
+      <button class="btn btn-primary" type="submit" name="action" value="move">Move</button>
+      <button class="btn btn-quiet" type="submit" name="action" value="tag"
+              formnovalidate>Tag as</button>
+      <label class="sr-only" for="bulk-tag">Tag name</label>
+      <input class="input w-40" id="bulk-tag" name="tag" maxlength="40" placeholder="tag name">
+    </div>
+    {% endif %}
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {% for column in board %}
+        <section class="card p-4">
+          <div class="flex items-baseline justify-between gap-2">
+            <h2 class="font-medium">{{ column.stage.label }}</h2>
+            <span class="text-meta tabular-nums text-content-muted">{{ column.count }}</span>
+          </div>
+          {% if column.stage.reveals_contact %}
+            <p class="mt-1 text-meta text-content-subtle">
+              {% icon "verified" css_class="size-3.5" %}Unlocks contact details
+            </p>
+          {% endif %}
+
+          <ul class="mt-3 divide-y divide-hairline">
+            {% for application in column.applications %}
+              <li class="flex items-start gap-3 py-2.5">
+                {% if can_bulk %}
+                <input type="checkbox" name="application" value="{{ application.public_id }}"
+                       class="mt-1 shrink-0"
+                       aria-label="Select {{ application.candidate.user.get_full_name }}">
+                {% endif %}
+                <div class="min-w-0 grow">
+                  {% if can_open_detail %}
+                  <a class="font-medium hover:underline [text-underline-offset:0.2em]"
+                     href="{% url 'employer:application_detail' company.slug application.public_id %}">
+                    {{ application.candidate.user.get_full_name|default:"Candidate" }}
+                  </a>
+                  {% else %}
+                  <span class="font-medium">{{ application.candidate.user.get_full_name|default:"Candidate" }}</span>
+                  {% endif %}
+                  <p class="mt-0.5 text-meta text-content-muted">
+                    {{ application.job.title }} · applied {{ application.applied_at|timesince }} ago
+                    {% if application.rating_average %}
+                      · {{ application.rating_average|floatformat:1 }}/5
+                    {% endif %}
+                  </p>
+                </div>
+              </li>
+            {% empty %}
+              <li class="py-3 text-sm text-content-subtle">Nobody here.</li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endfor %}
+    </div>
+  </form>
+{% endblock %}

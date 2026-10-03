@@ -1,0 +1,93 @@
+{% comment %}
+The gallery, as documents.
+
+A template is a layout, and a layout does not exist until there is text sitting
+in it — so every card is a real CV at A4 proportions rather than a name and a
+description. Every card draws the same worked example: sample data, identical
+for every candidate and unchanged by anything they do to their own CV. Their
+own CV appears in a template only when they ask for it on the template's page.
+
+The two controls sit over the page rather than under the name, so the metadata
+row stays a metadata row. Both post to resume:template_act and swap this whole
+region, because either can change the compare tray and the favourites count at
+the same time.
+{% endcomment %}
+{% url 'resume:template_act' as act %}
+<div id="template-results">
+  {% include "resume/_flash.html" %}
+
+  <p class="mb-6 text-meta text-content-muted">
+    Every card shows the same example CV, so only the layout changes between them.
+    Open a template to preview it with your own CV.
+  </p>
+
+  <ul class="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
+    {% for row in results %}
+      <li class="group relative">
+        <div class="absolute right-2 top-2 z-10 flex gap-1">
+          <button type="button" class="tpl-control"
+                  hx-post="{{ act }}" hx-target="#template-results" hx-swap="outerHTML"
+                  hx-vals='{"command": "favourite", "slug": "{{ row.template.slug }}"}'
+                  aria-pressed="{{ row.is_favourite|yesno:'true,false' }}"
+                  aria-label="{% if row.is_favourite %}Remove {{ row.template.name }} from favourites{% else %}Add {{ row.template.name }} to favourites{% endif %}">
+            {% if row.is_favourite %}
+              {% icon "bookmark" css_class="size-4 text-brand-600" %}
+            {% else %}
+              {% icon "bookmark" css_class="size-4" %}
+            {% endif %}
+          </button>
+
+          <button type="button" class="tpl-control"
+                  hx-post="{{ act }}" hx-target="#template-results" hx-swap="outerHTML"
+                  hx-vals='{"command": "compare", "slug": "{{ row.template.slug }}"}'
+                  aria-pressed="{{ row.in_compare|yesno:'true,false' }}"
+                  aria-label="{% if row.in_compare %}Remove {{ row.template.name }} from the comparison{% else %}Compare {{ row.template.name }}{% endif %}">
+            {% if row.in_compare %}
+              {% icon "check" css_class="size-4 text-accent" %}
+            {% else %}
+              {% icon "grid" css_class="size-4" %}
+            {% endif %}
+          </button>
+        </div>
+
+        <a href="{% url 'resume:template_detail' slug=row.template.slug %}"
+           class="block rounded-md focus-visible:outline-2">
+          <div class="overflow-hidden rounded-md paper-lift {% if row.in_compare %}paper-comparing{% endif %}">
+            {% include "resume/_paper.html" with paper=row.paper paper_classes=row.paper_classes|add:" sheet-thumb" paper_style=row.paper_style %}
+          </div>
+
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <div class="min-w-0">
+              <h2 class="text-body-lg group-hover:underline [text-underline-offset:0.2em]">
+                {{ row.template.name }}
+              </h2>
+              <p class="mt-0.5 text-meta text-content-muted">{{ row.template.suits }}</p>
+            </div>
+            {% if row.template.tier == "pro" %}
+              <span class="badge badge-accent shrink-0">
+                {% if row.is_locked %}{% icon "lock" css_class="size-3" %}{% endif %}Pro
+              </span>
+            {% else %}
+              <span class="badge badge-neutral shrink-0">Free</span>
+            {% endif %}
+          </div>
+        </a>
+      </li>
+    {% empty %}
+      <li class="text-content-muted sm:col-span-2 xl:col-span-3">
+        No templates match that search.
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if compare %}
+    <p class="mt-10 flex items-center gap-3 text-meta">
+      <a href="{% url 'resume:template_compare' %}" class="link-editorial">
+        Compare {{ compare|length }} side by side
+      </a>
+      <button type="button" class="text-content-subtle"
+              hx-post="{{ act }}" hx-target="#template-results" hx-swap="outerHTML"
+              hx-vals='{"command": "clear_compare"}'>Clear</button>
+    </p>
+  {% endif %}
+</div>

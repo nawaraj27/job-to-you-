@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% comment %}
+Standard inner page: a titled header band, then content.
+Used by every simple content page so headings never drift.
+{% endcomment %}
+
+{% block content %}
+  <div class="border-b border-hairline bg-surface-sunken">
+    <div class="container-page py-12 md:py-16">
+      {% if page_eyebrow %}<p class="eyebrow">{{ page_eyebrow }}</p>{% endif %}
+      <h1 class="{% if page_eyebrow %}mt-3 {% endif %}text-3xl font-semibold tracking-tight sm:text-4xl">
+        {% block page_heading %}{{ page_title }}{% endblock %}
+      </h1>
+      {% block page_intro %}{% endblock %}
+    </div>
+  </div>
+
+  <div class="container-page py-12 md:py-16">
+    {% block page_body %}{% endblock %}
+  </div>
+{% endblock %}

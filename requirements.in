@@ -1,0 +1,68 @@
+# Runtime dependency intent (ADR-A36).
+#
+# Edit THIS file, then recompile:
+#     uv pip compile requirements.in -o requirements.txt --generate-hashes
+#
+# requirements.txt is generated: fully pinned, hash-verified, and installed with
+# --require-hashes. Never edit it by hand.
+
+Django>=5.2,<7.0
+whitenoise>=6.6
+django-widget-tweaks>=1.5
+psycopg[binary]>=3.2
+celery>=5.4
+redis>=5.0
+argon2-cffi>=23.1
+
+# TOTP multi-factor authentication (ADR-A42). django-otp is the long-standing
+# Django MFA library: it owns device models, verification, the middleware and
+# the `otp_required` decorator, and its `otp_static` plugin provides recovery
+# codes. Preferred over an in-tree RFC 6238 implementation because
+# authentication code benefits more from community review than from one fewer
+# dependency.
+django-otp>=1.5
+
+# Field-level encryption for phone numbers (DEVELOPER.md §6.11, SRS §5.4).
+# `cryptography` is the audited primitive library every Python project uses for
+# this; an in-tree AES wrapper would be custom cryptographic code, which this
+# project has already decided against once (ADR-A42).
+cryptography>=43
+
+# Deterministic resume text extraction (P4). Both are the standard pure-Python
+# readers for their format; extracting text from PDF or OOXML by hand is weeks
+# of work to reproduce badly, and neither library executes document content.
+pdfminer.six>=20240706
+python-docx>=1.1
+
+# PDF generation (P6). Pure Python: no GTK, no cairo, no system packages, so a
+# render container is the same image everywhere and a Windows dev box behaves
+# like CI. Deterministic output via rl_config.invariant, which is what makes a
+# render cacheable by content hash.
+reportlab>=4.2
+
+# Outbound webhook delivery (P10). The server POSTs a signed body to a
+# company-supplied URL, with a short timeout and redirects disabled. `requests`
+# is the standard client and — importantly here — lets the timeout and
+# `allow_redirects=False` be stated plainly, both of which are part of the SSRF
+# posture rather than tuning (SRS §15.4).
+requests>=2.32
+
+# Vector columns and distance expressions for matching (P13, ADR-A2/A24).
+# The `vector` extension has been created since P0; this is the Django binding
+# for it — a field class, the HNSW index class, and the distance expressions.
+# Written by hand instead, it would be a custom field, a custom index and a
+# custom SQL function wrapper, all of which have to agree with pgvector's own
+# operator classes to be correct.
+pgvector>=0.3
+
+# Spoken practice interviews (apps/interviews/speech). Local speech-to-text on
+# CPU: no per-minute bill, and a candidate's voice never leaves the server.
+# Measured: 4.8% word error rate on the synthetic corpus, ~1 s per answer.
+# Pulls CTranslate2 and PyAV (bundled ffmpeg) as wheels; no system packages.
+faster-whisper>=1.2
+
+# Signed JaaS join tokens (apps/interviews/providers/jitsi.py). RS256 with the
+# JaaS API key, so a room URL is not a bearer link. Already present transitively;
+# declared because the code now imports it directly.
+PyJWT[crypto]>=2.8
+

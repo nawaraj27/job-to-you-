@@ -1,0 +1,82 @@
+{% extends "layouts/employer.html" %}
+{% comment %}
+One candidate, opened from a search.
+
+**Opening this page recorded it.** The candidate can see that this company
+looked and when. That is stated on the page rather than buried in a policy,
+because a recruiter who knows the candidate can see them is a recruiter who
+behaves the way the product needs.
+
+No contact details. ADR-A34 reveals those at a stage that requires an
+application, and finding somebody in a search is not that stage — the way to
+reach this person is to message them or invite them to apply.
+{% endcomment %}
+
+{% block title %}{{ candidate.headline|default:"Candidate" }} - {{ company.name }}{% endblock %}
+{% block page_heading %}{{ candidate.headline|default:"Candidate" }}{% endblock %}
+{% block page_intro %}
+  <p class="text-content-muted">
+    {% if candidate.location_id %}{{ candidate.location.name }} · {% endif %}
+    {% if candidate.seeking %}{{ candidate.get_seeking_display }}{% endif %}
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <p class="mb-6 text-meta text-content-subtle">
+    <a href="{{ back_url }}" class="link-editorial">Back to search</a>
+  </p>
+
+  <div class="panel bg-surface-sunken mb-6 p-4">
+    <p class="text-meta">
+      This candidate can see that {{ company.name }} opened their profile today.
+      Contact details are not shown here. They are revealed when somebody applies.
+    </p>
+  </div>
+
+  {% if candidate.summary %}
+    <section class="stack mb-8">
+      <h2 class="stack-title">About</h2>
+      <p class="mt-3 whitespace-pre-line">{{ candidate.summary }}</p>
+    </section>
+  {% endif %}
+
+  {% if skills %}
+    <section class="stack mb-8">
+      <h2 class="stack-title">Skills</h2>
+      <ul class="mt-3 flex flex-wrap gap-1.5">
+        {% for row in skills %}
+          <li class="chip">{{ row.skill.name }}{% if row.years %} · {{ row.years }}y{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if experiences %}
+    <section class="stack mb-8">
+      <h2 class="stack-title">Experience</h2>
+      <ul class="mt-3 space-y-4">
+        {% for role in experiences %}
+          <li>
+            <p class="text-meta font-medium">{{ role.title }}, {{ role.org_name }}</p>
+            <p class="text-caption text-content-subtle">
+              {{ role.start_date|date:"M Y" }} –
+              {% if role.is_current %}Present{% else %}{{ role.end_date|date:"M Y"|default:"—" }}{% endif %}
+            </p>
+            {% if role.summary %}<p class="mt-1 text-content-muted">{{ role.summary }}</p>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if education %}
+    <section class="stack">
+      <h2 class="stack-title">Education</h2>
+      <ul class="mt-3 space-y-2">
+        {% for row in education %}
+          <li class="text-meta">{{ row.qualification }}, {{ row.institution }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+{% endblock %}

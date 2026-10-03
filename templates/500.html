@@ -1,0 +1,46 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Something went wrong</title>
+  <link rel="stylesheet" href="{% static 'css/dist/site.css' %}">
+  <link rel="icon" href="{% static 'img/brand/favicon-32.png' %}" type="image/png" sizes="32x32">
+</head>
+{% comment %}
+Server error.
+
+Standalone on purpose: Django renders this template with an empty context, so
+`site`, `features` and the navigation partials are all unavailable — a 500 page
+that extends base.html is a 500 page that throws its own 500. Everything here
+is either literal or a static file.
+
+No stack trace, no error id the reader cannot use, no apology paragraph. What
+happened, whose fault it is, and the two things worth trying.
+{% endcomment %}
+<body class="min-h-dvh bg-canvas text-content antialiased">
+  <div class="container-page">
+    <div class="mx-auto flex min-h-dvh max-w-xl flex-col justify-center py-16">
+      <p class="overline">Error 500</p>
+      <h1 class="mt-4 font-serif text-display-sm font-medium">Something broke on our side.</h1>
+      <p class="lede mt-4">
+        This is our fault, not yours. The page failed before it could load. Nothing
+        you had saved has been lost. Our team is alerted automatically.
+      </p>
+
+      <div class="mt-8 flex flex-wrap gap-3">
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">
+          Try again
+        </button>
+        <a href="/" class="btn btn-secondary">Go to the home page</a>
+      </div>
+
+      <p class="mt-8 border-t border-hairline pt-6 text-meta text-content-muted">
+        If it keeps happening, email
+        <a href="mailto:hello@careerai.app" class="underline [text-underline-offset:0.2em]">hello@careerai.app</a>
+        and say what you were doing. That is genuinely the fastest way to get it fixed.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

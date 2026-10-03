@@ -1,0 +1,227 @@
+{% comment %}
+The part of the builder that actually builds the CV.
+
+Every section is editable where it sits: rename it, reorder it, hide it,
+delete it, and type into it. Before this the panel offered move-up, move-down
+and hide — and nothing at all for the words, so a "CV builder" had no way to
+enter a job title, a bullet or a summary. Everything below already existed as a
+command on `BuilderCommandView`; none of it had a control.
+
+Every field posts on `change` rather than on a save button. A CV builder with a
+save button is a CV builder that loses work, and the header already reports
+what is saved and offers undo.
+
+Drag to reorder is layered on top of the arrows rather than replacing them:
+keyboard and screen-reader users get the buttons, everyone gets the drag, and
+both post the same commands.
+{% endcomment %}
+{% url 'resume:builder_act' document_id=document.public_id as act %}
+
+<section>
+  <div class="stack-head">
+    <h2 class="stack-title">Sections</h2>
+    <span class="text-meta text-content-subtle">Drag to reorder</span>
+  </div>
+
+  <ul class="mt-4 space-y-3"
+      data-sortable
+      data-sortable-url="{{ act }}"
+      data-sortable-target="#editor-live">
+    {% for section in all_sections %}
+      <li class="section-card {% if not section.visible %}section-card-hidden{% endif %}"
+          data-sortable-item
+          data-section-id="{{ section.id }}">
+
+        <div class="section-card-head">
+          <button type="button" class="section-grip" data-sortable-handle
+                  aria-label="Drag {{ section.title }} to reorder" tabindex="-1">
+            {% icon "drag" css_class="size-4" %}
+          </button>
+
+          <label class="sr-only" for="title-{{ section.id }}">Section title</label>
+          <input id="title-{{ section.id }}" name="title" class="section-title-input"
+                 value="{{ section.title }}"
+                 hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                 hx-vals='{"command": "rename_section", "section": "{{ section.id }}"}'>
+
+          <div class="section-card-tools">
+            <button type="button" class="btn btn-ghost btn-sm" aria-label="Move {{ section.title }} up"
+                    hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                    hx-vals='{"command": "move_section", "section": "{{ section.id }}", "offset": "-1"}'>
+              {% icon "chevron-down" css_class="size-4 rotate-180" %}
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm" aria-label="Move {{ section.title }} down"
+                    hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                    hx-vals='{"command": "move_section", "section": "{{ section.id }}", "offset": "1"}'>
+              {% icon "chevron-down" css_class="size-4" %}
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm"
+                    aria-pressed="{{ section.visible|yesno:'false,true' }}"
+                    hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                    hx-vals='{"command": "toggle_section", "section": "{{ section.id }}"}'>
+              {% if section.visible %}Hide{% else %}Show{% endif %}
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm text-danger-fg"
+                    aria-label="Delete {{ section.title }}"
+                    hx-confirm="The section and everything in it goes. Undo is available straight afterwards."
+                    data-confirm-title="Delete {{ section.title }}?"
+                    data-confirm-label="Delete"
+                    data-confirm-tone="danger"
+                    hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                    hx-vals='{"command": "delete_section", "section": "{{ section.id }}"}'>
+              {% icon "trash" css_class="size-4" %}
+            </button>
+          </div>
+        </div>
+
+        <div class="section-card-body">
+
+          {% if section.kind == "text" %}
+            <label class="sr-only" for="text-{{ section.id }}">{{ section.title }}</label>
+            <textarea id="text-{{ section.id }}" name="text" rows="5" class="input"
+                      placeholder="Two or three sentences. What you do, what you have shipped, and what you are looking for."
+                      hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                      hx-vals='{"command": "section_text", "section": "{{ section.id }}"}'>{{ section.text }}</textarea>
+
+          {% elif section.kind == "list" %}
+            <label class="sr-only" for="items-{{ section.id }}">{{ section.title }}</label>
+            <textarea id="items-{{ section.id }}" name="text" rows="5" class="input"
+                      placeholder="One per line."
+                      hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                      hx-vals='{"command": "section_items", "section": "{{ section.id }}"}'>{% for item in section.items %}{{ item }}
+{% endfor %}</textarea>
+            <p class="mt-1.5 text-meta text-content-subtle">One per line.</p>
+
+          {% else %}
+            {% comment %}
+              Entries reorder the same way sections do, because a CV is read in
+              reverse chronological order and there was no way to put a role in
+              one: an entry added after the fact, or imported in whatever order
+              a PDF extracted, stayed where it landed.
+            {% endcomment %}
+            <div data-sortable
+                 data-sortable-url="{{ act }}"
+                 data-sortable-target="#editor-live"
+                 data-sortable-command="reorder_entries"
+                 data-sortable-section="{{ section.id }}">
+            {% for entry in section.entries %}
+              <div class="entry-card" data-sortable-item data-section-id="{{ entry.id }}">
+                <div class="entry-card-head">
+                  <button type="button" class="section-grip" data-sortable-handle tabindex="-1"
+                          aria-label="Drag {{ entry.title|default:'this entry' }} to reorder">
+                    {% icon "drag" css_class="size-4" %}
+                  </button>
+                  <p class="entry-card-name">{{ entry.title|default:"Untitled entry" }}</p>
+                  <div class="section-card-tools">
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            aria-label="Move {{ entry.title|default:'this entry' }} up"
+                            hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                            hx-vals='{"command": "move_entry", "entry": "{{ entry.id }}", "offset": "-1"}'>
+                      {% icon "chevron-down" css_class="size-4 rotate-180" %}
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            aria-label="Move {{ entry.title|default:'this entry' }} down"
+                            hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                            hx-vals='{"command": "move_entry", "entry": "{{ entry.id }}", "offset": "1"}'>
+                      {% icon "chevron-down" css_class="size-4" %}
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            aria-label="Duplicate {{ entry.title|default:'this entry' }}"
+                            hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                            hx-vals='{"command": "duplicate_entry", "entry": "{{ entry.id }}"}'>
+                      {% icon "clipboard" css_class="size-4" %}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <div class="field">
+                    <label class="label" for="et-{{ entry.id }}">Title</label>
+                    <input id="et-{{ entry.id }}" name="title" class="input" value="{{ entry.title }}"
+                           placeholder="Senior Backend Engineer"
+                           hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                           hx-include="[data-entry='{{ entry.id }}']"
+                           hx-vals='{"command": "update_entry", "entry": "{{ entry.id }}"}'
+                           data-entry="{{ entry.id }}">
+                  </div>
+                  <div class="field">
+                    <label class="label" for="eo-{{ entry.id }}">Organisation</label>
+                    <input id="eo-{{ entry.id }}" name="org" class="input" value="{{ entry.org }}"
+                           placeholder="Fonepay"
+                           hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                           hx-include="[data-entry='{{ entry.id }}']"
+                           hx-vals='{"command": "update_entry", "entry": "{{ entry.id }}"}'
+                           data-entry="{{ entry.id }}">
+                  </div>
+                </div>
+
+                <div class="field mt-2">
+                  <label class="label" for="ed-{{ entry.id }}">Dates</label>
+                  <input id="ed-{{ entry.id }}" name="dates" class="input" value="{{ entry.dates }}"
+                         placeholder="2022 – present"
+                         hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                         hx-include="[data-entry='{{ entry.id }}']"
+                         hx-vals='{"command": "update_entry", "entry": "{{ entry.id }}"}'
+                         data-entry="{{ entry.id }}">
+                </div>
+
+                <div class="field mt-2">
+                  <label class="label" for="eb-{{ entry.id }}">What you did</label>
+                  <textarea id="eb-{{ entry.id }}" name="text" rows="4" class="input"
+                            placeholder="One achievement per line. Start with the verb and end with the number."
+                            hx-post="{{ act }}" hx-trigger="change" hx-target="#editor-live" hx-swap="outerHTML"
+                            hx-vals='{"command": "bullets", "entry": "{{ entry.id }}"}'>{% for bullet in entry.bullets %}{{ bullet }}
+{% endfor %}</textarea>
+                  <p class="mt-1.5 text-meta text-content-subtle">One achievement per line.</p>
+                </div>
+
+                <button type="button" class="link-editorial mt-3 text-danger-fg"
+                        hx-confirm="{{ entry.title|default:'This entry' }} and its bullets go. Undo is available straight afterwards."
+                        data-confirm-title="Delete this entry?"
+                        data-confirm-label="Delete"
+                        data-confirm-tone="danger"
+                        hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                        hx-vals='{"command": "delete_entry", "entry": "{{ entry.id }}"}'>
+                  Remove this entry
+                </button>
+              </div>
+            {% empty %}
+              <p class="text-meta text-content-subtle">Nothing here yet.</p>
+            {% endfor %}
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-sm mt-3"
+                    hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML"
+                    hx-vals='{"command": "add_entry", "section": "{{ section.id }}"}'>
+              {% icon "plus" css_class="size-4" %}Add to {{ section.title }}
+            </button>
+          {% endif %}
+
+        </div>
+      </li>
+    {% empty %}
+      <li class="text-content-muted">
+        No sections yet. Add the first one below; Summary is the usual place to start.
+      </li>
+    {% endfor %}
+  </ul>
+
+  {# --- add a section ------------------------------------------------- #}
+  <form class="mt-5 flex flex-wrap items-end gap-2"
+        hx-post="{{ act }}" hx-target="#editor-live" hx-swap="outerHTML">
+    <input type="hidden" name="command" value="add_section">
+    <div class="field grow">
+      <label class="label" for="new-section-title">New section</label>
+      <input id="new-section-title" name="title" class="input" placeholder="Projects, Awards, Volunteering…">
+    </div>
+    <div class="field w-36">
+      <label class="label" for="new-section-kind">Kind</label>
+      <select id="new-section-kind" name="kind" class="input">
+        <option value="entries">Dated entries</option>
+        <option value="list">A list</option>
+        <option value="text">A paragraph</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-secondary">Add</button>
+  </form>
+</section>

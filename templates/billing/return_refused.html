@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% comment %}
+A payment return that could not be verified (ADR-A58). Nothing was recorded.
+{% endcomment %}
+
+{% block title %}Payment not confirmed — {{ site.name }}{% endblock %}
+
+{% block content %}
+  <div class="mx-auto max-w-lg px-4 py-16">
+    <section class="panel p-6" aria-labelledby="refused-title">
+      <h1 id="refused-title" class="text-title font-semibold">We could not confirm that payment</h1>
+      <p class="mt-3 text-content-muted">{{ message }}</p>
+      <p class="mt-3 text-content-muted">
+        Nothing has been recorded against your account. If money left your wallet, it will
+        show on your invoice once the payment service confirms it, or you can contact us with
+        the transaction code.
+      </p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        {% if user.is_authenticated %}
+          <a href="{% url 'dashboard:index' %}" class="btn btn-primary">Go to your dashboard</a>
+        {% endif %}
+        <a href="{% url 'core:contact' %}" class="btn btn-secondary">Contact us</a>
+      </div>
+    </section>
+  </div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% comment %}
+Privacy: who can see you, and what they see.
+
+Visibility is a radio rather than a switch because the middle option is the one
+most people want and a two-state control cannot offer it. Each option states
+its consequence — "employers you've applied to" means nothing on its own.
+{% endcomment %}
+{% url 'settings:privacy_act' as act %}
+<div id="privacy-body">
+  {% include "settings/_flash.html" %}
+
+  {% if role == "employer" %}
+    {% comment %}
+      An employer has no candidate profile to hide. What the public sees of
+      them is the company page, which has its own controls — offering four
+      settings that govern a record they do not have would be worse than
+      sending them one screen further.
+    {% endcomment %}
+    <section class="stack">
+      <div class="stack-head"><h2 class="stack-title">What candidates see</h2></div>
+      <p class="mt-2 text-content-muted">
+        Your public presence is your company page: name, logo, description and
+        which postings are live. It's edited there, not here.
+      </p>
+      <a href="{% url 'employer:index' %}" class="btn btn-secondary mt-4 self-start">
+        {% icon "building" css_class="size-4.5" %}Company profile
+      </a>
+    </section>
+
+    <section class="stack mt-10">
+      <div class="stack-head"><h2 class="stack-title">This account</h2></div>
+      <div class="mt-3">
+        {% include "settings/_switch_row.html" with act=act target="#privacy-body" key="share_analytics" on=prefs.privacy.share_analytics label="Share anonymous usage data" text="Which screens get used, never what you or your candidates wrote. Turning it off changes nothing about the product for you." %}
+      </div>
+    </section>
+
+  {% else %}
+  <section class="stack">
+    <div class="stack-head">
+      <h2 class="stack-title">Who can see your profile</h2>
+    </div>
+
+    <fieldset class="mt-5">
+      <legend class="sr-only">Profile visibility</legend>
+      <div class="space-y-2">
+        {% for option in visibility_options %}
+          <label class="choice">
+            <input type="radio" name="profile_visibility" value="{{ option.key }}"
+                   class="mt-0.5 size-4 accent-brand-600"
+                   {% if prefs.privacy.profile_visibility == option.key %}checked{% endif %}
+                   hx-post="{{ act }}"
+                   hx-vals='{"command": "visibility", "value": "{{ option.key }}"}'
+                   hx-trigger="change"
+                   hx-target="#privacy-body" hx-swap="outerHTML">
+            <span>
+              <span class="block font-medium">{{ option.label }}</span>
+              <span class="mt-0.5 block text-meta text-content-muted">{{ option.text }}</span>
+            </span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <p class="mt-4 flex gap-2 text-meta text-content-subtle">
+      {% icon "shield" css_class="mt-px size-4 shrink-0" %}
+      <span>
+        Matching runs on your CV either way. Hiding your profile stops people
+        reading it; it doesn't stop roles being scored against you.
+      </span>
+    </p>
+  </section>
+
+  <section class="stack mt-10">
+    <div class="stack-head"><h2 class="stack-title">What's shown</h2></div>
+
+    <div class="mt-3">
+      {% include "settings/_switch_row.html" with act=act target="#privacy-body" key="allow_contact" on=prefs.privacy.allow_contact label="Let employers contact me" text="Companies you haven't applied to can write to you once. They can't write twice without a reply." %}
+      {% include "settings/_switch_row.html" with act=act target="#privacy-body" key="show_salary" on=prefs.privacy.show_salary label="Show my salary expectation" text="Visible on your profile to anyone who can see it. Stating a number tends to filter out roles that were never going to work." %}
+      {% include "settings/_switch_row.html" with act=act target="#privacy-body" key="search_indexing" on=prefs.privacy.search_indexing label="Allow search engines to index my profile" text="Only takes effect if your profile is visible to anyone with the link." disabled=disable_indexing %}
+      {% include "settings/_switch_row.html" with act=act target="#privacy-body" key="share_analytics" on=prefs.privacy.share_analytics label="Share anonymous usage data" text="Which screens get used, never what you wrote. Turning it off changes nothing about the product for you." %}
+    </div>
+  </section>
+
+  <section class="stack mt-10" aria-labelledby="blocked-heading">
+    <div class="stack-head"><h2 class="stack-title" id="blocked-heading">Companies you've blocked</h2></div>
+    <p class="mt-2 text-meta text-content-muted">
+      A blocked company cannot find or open your profile or message you. You block a
+      company from a conversation in Messages.
+    </p>
+    {% if blocked %}
+      <ul class="mt-3 divide-y divide-hairline" role="list">
+        {% for row in blocked %}
+          <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+            <span class="min-w-0">
+              <span class="block font-medium">{{ row.company.name }}</span>
+              <span class="block text-meta text-content-subtle">Blocked {{ row.created_at|date:"j M Y" }}</span>
+            </span>
+            <button type="button" class="btn btn-secondary"
+                    hx-post="{{ act }}"
+                    hx-vals='{"command": "unblock", "block_id": "{{ row.pk }}"}'
+                    hx-target="#privacy-body" hx-swap="outerHTML"
+                    hx-confirm="Access you already withdrew is not restored. If your visibility allows it, they can find your profile again."
+                    data-confirm-title="Unblock {{ row.company.name }}?"
+                    data-confirm-label="Unblock"
+                    aria-label="Unblock {{ row.company.name }}">
+              Unblock
+            </button>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mt-3 text-content-subtle">You haven't blocked any companies.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+</div>

@@ -1,0 +1,62 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+Picking an interview time (FR-10.6).
+
+Times are shown as they are, in the candidate's own reading of them, with no
+"only 2 left!" urgency. A slot somebody else takes while this page is open
+produces an honest "somebody just took that time" rather than a booking that
+silently fails.
+
+The same screen moves an existing interview (FR-10.7). To a candidate the
+question is "when", not "book or reschedule", and the view decides which of the
+two it is from whether they already hold a time.
+{% endcomment %}
+
+{% block title %}{{ page_title }} — {{ site.name }}{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-2xl stack">
+    <div>
+      <p class="overline">{{ application.job.company.name }}</p>
+      <h1 class="mt-1 text-display">{{ application.job.title }}</h1>
+      {% if booked %}
+        <p class="mt-1 text-content-muted">
+          You are booked for {{ booked.scheduled_at|date:"l j F, H:i" }}.
+          Choosing another time moves it and frees this one.
+        </p>
+      {% else %}
+        <p class="mt-1 text-content-muted">Pick a time that works for you.</p>
+      {% endif %}
+    </div>
+
+    {% if error %}
+      <p class="text-meta text-danger-fg" role="status">{{ error }}</p>
+    {% endif %}
+
+    {% if slots %}
+      <form method="post" class="stack">
+        {% csrf_token %}
+        <ul class="divide-y divide-hairline">
+          {% for slot in slots %}
+            <li class="flex items-center justify-between gap-3 py-3">
+              <label class="flex items-center gap-3">
+                <input type="radio" name="slot" value="{{ slot.pk }}" required>
+                <span>
+                  <span class="text-meta">{{ slot.starts_at|date:"l j F" }}</span>
+                  <span class="block text-caption text-content-subtle">
+                    {{ slot.starts_at|date:"H:i" }} – {{ slot.ends_at|date:"H:i" }}
+                  </span>
+                </span>
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+        <button type="submit" class="btn btn-primary self-start">
+          {% if booked %}Move my interview{% else %}Confirm this time{% endif %}
+        </button>
+      </form>
+    {% else %}
+      {% include "components/empty_state.html" with icon="calendar" title="No times available yet" text="This company has not published interview times. They will be in touch, and any times they open appear here." %}
+    {% endif %}
+  </div>
+{% endblock %}

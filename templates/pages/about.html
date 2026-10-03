@@ -1,0 +1,36 @@
+{% extends "layouts/page.html" %}
+
+{% block title %}About — {{ site.name }}{% endblock %}
+{% block page_heading %}Built for the part of job hunting nobody helps with{% endblock %}
+{% block page_intro %}
+  <p class="mt-4 max-w-2xl text-body-lg leading-relaxed text-content-muted">
+    Most applications are rejected before a person reads them, and almost nobody
+    tells candidates why.
+  </p>
+{% endblock %}
+
+{% block page_body %}
+  <div class="prose-page">
+    <p>
+      {{ site.name }} exists to close that feedback gap. Upload the CV you already
+      send out, and see it the way an applicant tracking system does: what parsed,
+      what didn't, which requirements you match, and which sentences are costing
+      you interviews.
+    </p>
+
+    <h2>What we believe</h2>
+    <ul>
+      <li>Feedback should be specific. "Improve your summary" is not feedback; "these six bullets have no measurable result" is.</li>
+      <li>Your words stay yours. Suggested rewrites are shown side by side, with a reason, and you accept or reject each one.</li>
+      <li>Career histories are not uniform. Internships, freelancing, research, volunteering, and career breaks are all real experience.</li>
+      <li>Data belongs to the person it describes. You can export it or delete it whenever you want.</li>
+    </ul>
+
+    <h2>Where we're going</h2>
+    <p>
+      The platform is being built module by module: CV analysis first, then the
+      builder, job matching, interviews, and the employer side. Each one ships
+      when it works properly rather than as a preview.
+    </p>
+  </div>
+{% endblock %}

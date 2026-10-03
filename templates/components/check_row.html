@@ -1,0 +1,21 @@
+{% comment %}
+One line of an analysis report.
+
+  {% include "components/check_row.html" with check=check %}
+
+check: {label, status: pass|warn|fail, note (optional)}
+{% endcomment %}
+<li class="flex items-start gap-2.5 py-2">
+  <span class="mt-px shrink-0
+    {% if check.status == 'pass' %}text-success-fg{% elif check.status == 'warn' %}text-warning-fg{% else %}text-danger-fg{% endif %}">
+    {% if check.status == "pass" %}{% icon "check-circle" css_class="size-4.5" %}
+    {% elif check.status == "warn" %}{% icon "warning" css_class="size-4.5" %}
+    {% else %}{% icon "error" css_class="size-4.5" %}{% endif %}
+  </span>
+  <span class="min-w-0">
+    <span class="block text-meta font-medium leading-5">{{ check.label }}</span>
+    {% if check.note %}
+      <span class="block text-caption leading-5 text-content-subtle">{{ check.note }}</span>
+    {% endif %}
+  </span>
+</li>

@@ -1,0 +1,115 @@
+{% comment %}
+One job in a list.
+
+  {% include "components/job_row.html" with job=job %}
+  {% include "components/job_row.html" with job=job show_match=1 %}
+
+A row, not a card: search results are a list of records the eye scans down a
+single left edge, and twenty bordered boxes turn that scan into twenty separate
+decisions. The whole row is a link; the save control sits above it.
+
+Two deliberate reductions from the first version:
+
+  Metadata is text with separators, not four icon+label pairs. A pin, a globe,
+  a banknote and a clock on every row is 32 glyphs on a page of eight results,
+  all of them decorating words that already say the same thing. The labels stay
+  in sr-only <dt>s so the semantics survive.
+
+  Three skills, not five plus an overflow. The chip row is orientation, not an
+  inventory — the full list is on the job page, one click away.
+
+`saved_slugs` and `applied_slugs` come from the view (jobs.state.view_state),
+so the row reads per-user state without the shared job record carrying it.
+{% endcomment %}
+<li class="row row-interactive group">
+  <div class="flex gap-4">
+
+    {% include "components/avatar.html" with name=job.company.name initials=job.company.initials logo=job.company.logo %}
+
+    <div class="min-w-0 flex-1">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h3 class="text-body-lg leading-snug">
+            {% if job.url %}
+              <a href="{{ job.url }}" class="before:absolute before:inset-0 group-hover:underline
+                                             [text-underline-offset:0.2em]">{{ job.title }}</a>
+            {% else %}
+              {# A saved role that is closed, paused or withdrawn: its page answers 404. #}
+              {{ job.title }}
+            {% endif %}
+          </h3>
+          <p class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-content-muted">
+            {{ job.company.name }}
+            {% comment %}From the company's verification record (docs/Job-Search.md), never from the posting.{% endcomment %}
+            {% if job.company.verified == "verified" %}
+              <span class="inline-flex items-center gap-1 text-caption font-medium text-success-fg">{% icon "verified" css_class="size-3.5" %}Verified</span>
+            {% elif job.company.verified %}
+              <span class="text-caption text-content-subtle">· Not verified</span>
+            {% endif %}
+            {% if job.slug|in_list:applied_slugs %}
+              <span class="badge badge-neutral">{% icon "check" css_class="size-3" %}Applied</span>
+            {% endif %}
+          </p>
+        </div>
+
+        {% if show_match and job.match %}
+          <span class="relative z-10 shrink-0 text-right">
+            <span class="block font-serif text-lg leading-none tabular-nums">{{ job.match.score }}%</span>
+            <span class="overline mt-0.5 block">{{ job.match.label }}</span>
+          </span>
+        {% endif %}
+      </div>
+
+      {% comment %}
+        Salary carries the weight because it is the field people scan for and
+        the one they disqualify on. The rest is supporting detail at one tier
+        down, separated by middots rather than by icons.
+      {% endcomment %}
+      <dl class="mt-2 text-meta text-content-muted">
+        <dt class="sr-only">Salary</dt>
+        <dd class="inline font-medium text-content tabular-nums">{{ job.salary_display }}</dd>
+        <span aria-hidden="true" class="mx-1.5 text-content-subtle">·</span>
+        <dt class="sr-only">Location</dt>
+        <dd class="inline">{{ job.location }}</dd>
+        <span aria-hidden="true" class="mx-1.5 text-content-subtle">·</span>
+        <dt class="sr-only">Work type</dt>
+        <dd class="inline">{{ job.workplace }}</dd>
+        <span aria-hidden="true" class="mx-1.5 text-content-subtle">·</span>
+        <dt class="sr-only">Posted</dt>
+        <dd class="inline">{{ job.posted_display }}</dd>
+        {% if job.closing %}
+          <span aria-hidden="true" class="mx-1.5 text-content-subtle">·</span>
+          <dt class="sr-only">Closing</dt>
+          <dd class="inline {% if job.closing.urgent %}font-medium text-warning-fg{% endif %}">{{ job.closing.label }}</dd>
+        {% endif %}
+      </dl>
+
+      {% if job.skills %}
+        <ul class="mt-2.5 flex flex-wrap gap-1.5">
+          {% for skill in job.skills|slice:":3" %}
+            <li class="chip{% if show_match and skill in job.match.matched %} chip-match{% endif %}">
+              {% if show_match and skill in job.match.matched %}{% icon "check" css_class="size-3" %}{% endif %}{{ skill }}
+            </li>
+          {% endfor %}
+          {% if job.skills|length > 3 %}
+            <li class="chip text-content-subtle">+{{ job.skills|length|add:"-3" }} more</li>
+          {% endif %}
+        </ul>
+      {% endif %}
+
+      {% if show_match and job.match.missing %}
+        <p class="mt-2 text-meta text-content-subtle">
+          Missing: {{ job.match.missing|join:", " }}
+        </p>
+      {% endif %}
+    </div>
+
+    {% comment %}
+      Save. Server-rendered so the icon and the record cannot disagree — the
+      previous version flipped a client-side flag that a page reload undid.
+    {% endcomment %}
+    <div class="relative z-10 hidden shrink-0 sm:block">
+      {% include "jobs/_control.html" with job=job %}
+    </div>
+  </div>
+</li>

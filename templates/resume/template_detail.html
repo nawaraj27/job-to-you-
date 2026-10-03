@@ -1,0 +1,143 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+One template, at full size.
+
+The sheet is the worked example unless the candidate asked to see one of their
+own CVs in it (`?cv=<document>`), and the page always says which. The example
+is sample data: it is the same for everybody and never changes because a
+candidate edited their CV.
+
+The actions depend on two things the view settles, never the template:
+  * `is_locked` — a Pro template this candidate's plan does not include. The
+    page says so up front and offers the upgrade, instead of offering "Use this
+    template" and refusing it after the click. The apply service still refuses
+    a direct post (`documents.require_template_allowed`).
+  * `documents` — whether there is a CV to apply it to, or one to start.
+{% endcomment %}
+
+{% block title %}{{ template.name }} — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% url 'resume:templates' as gallery_url %}
+  {% include "components/app_head.html" with title=template.name text=template.suits back_url=gallery_url back_label="All templates" %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14">
+    <div class="min-w-0">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-meta text-content-muted" id="sheet-caption">
+          {% if is_own_cv %}
+            <span class="badge badge-accent">Your CV</span>
+            <span class="ml-1">{{ previewing.name }} in {{ template.name }}. A preview only; nothing is changed.</span>
+          {% else %}
+            <span class="badge badge-neutral">Example CV</span>
+            <span class="ml-1">An example CV: sample content, the same for everyone.</span>
+          {% endif %}
+        </p>
+        {% if documents %}
+          <nav class="flex flex-wrap items-center gap-2 text-meta" aria-label="What to preview">
+            {% if is_own_cv %}
+              <a href="{% url 'resume:template_detail' slug=template.slug %}" class="link-editorial">Show the example</a>
+            {% else %}
+              {% for document in documents|slice:":3" %}
+                <a href="{% url 'resume:template_detail' slug=template.slug %}?cv={{ document.public_id }}" class="link-editorial">
+                  Preview with {% if documents|length > 1 %}“{{ document.name }}”{% else %}my CV{% endif %}
+                </a>
+              {% endfor %}
+            {% endif %}
+          </nav>
+        {% endif %}
+      </div>
+
+      <div aria-describedby="sheet-caption">
+        {% include "resume/_paper.html" %}
+      </div>
+      <p class="mt-3 text-meta text-content-subtle">
+        This is the layout your PDF export uses. The Word export keeps the same
+        typeface, accent and headings but stays single-column, because applicant
+        tracking systems read a Word table cell by cell.
+      </p>
+    </div>
+
+    <aside class="min-w-0 lg:sticky lg:top-24 lg:self-start">
+      <div class="panel p-5">
+        <div class="flex items-center justify-between gap-3">
+          <p class="overline">About this template</p>
+          {% if template.tier == "pro" %}
+            <span class="badge badge-accent">Pro</span>
+          {% else %}
+            <span class="badge badge-positive">Free</span>
+          {% endif %}
+        </div>
+        {% if template.notes %}<p class="mt-3 text-content-muted">{{ template.notes }}</p>{% endif %}
+
+        <dl class="mt-5 grid grid-cols-3 gap-4 border-t border-hairline pt-4 lg:grid-cols-1 lg:gap-3">
+          <div><dt class="overline">Layout</dt><dd class="mt-1 font-medium">{{ template.get_layout_display }}</dd></div>
+          <div><dt class="overline">Font</dt><dd class="mt-1 font-medium">{{ template.font }}</dd></div>
+          <div><dt class="overline">Plan</dt><dd class="mt-1 font-medium">{% if template.tier == "pro" %}Pro{% else %}Every plan{% endif %}</dd></div>
+        </dl>
+      </div>
+
+      <div class="panel mt-4 p-5" id="template-action">
+        {% if is_locked %}
+          <div class="flex items-start gap-3">
+            <span class="mt-0.5 shrink-0 text-accent">{% icon "lock" css_class="size-5" %}</span>
+            <div class="min-w-0">
+              <h2 class="font-medium">Part of Pro</h2>
+              <p class="mt-1 text-meta text-content-muted">
+                You can preview {{ template.name }} with the example or with your own CV.
+                Using it for a CV, and exporting in it, needs the Pro plan.
+              </p>
+            </div>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <a href="{% url 'dashboard:plan' %}" class="btn btn-primary">See Pro and upgrade</a>
+            <a href="{% url 'resume:templates' %}?tier=free" class="btn btn-secondary">Free templates</a>
+          </div>
+        {% elif documents %}
+          <form method="post" action="{% url 'resume:template_act' %}">
+            {% csrf_token %}
+            <input type="hidden" name="command" value="apply">
+            <input type="hidden" name="slug" value="{{ template.slug }}">
+            <div class="field">
+              <label for="apply-doc" class="label">Use it for</label>
+              <select id="apply-doc" name="document" class="input">
+                {% for document in documents %}
+                  <option value="{{ document.public_id }}" {% if previewing and previewing.pk == document.pk %}selected{% endif %}>{{ document.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3 w-full">Use this template and edit</button>
+          </form>
+          <p class="mt-3 text-meta text-content-subtle">
+            Opens the editor in {{ template.name }}. Only the layout changes; every word
+            of your CV stays, and you can switch back.
+          </p>
+        {% else %}
+          <form method="post" action="{% url 'resume:builder' %}">
+            {% csrf_token %}
+            <input type="hidden" name="template" value="{{ template.slug }}">
+            <input type="hidden" name="start" value="example">
+            <input type="hidden" name="mode" value="editor">
+            <button type="submit" class="btn btn-primary w-full">Start a CV from this example</button>
+          </form>
+          <p class="mt-3 text-meta text-content-subtle">
+            Opens the editor in {{ template.name }} with a copy of the example to write over:
+            your copy, with your name on it. The example itself never changes.
+            <a href="{% url 'resume:builder' %}?template={{ template.slug }}" class="link-editorial">Start blank instead</a>.
+          </p>
+        {% endif %}
+      </div>
+
+      <p class="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-meta">
+        <a href="{% url 'resume:templates' %}" class="link-editorial">Try another template</a>
+        {% if compare %}
+          <a href="{% url 'resume:template_compare' %}" class="link-editorial">
+            Compare {{ compare|length }} side by side
+          </a>
+        {% endif %}
+      </p>
+    </aside>
+  </div>
+{% endblock %}

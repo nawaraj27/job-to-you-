@@ -1,0 +1,88 @@
+{% extends "layouts/app.html" %}
+{% comment %}
+The candidate's own numbers (SRS §16.2).
+
+Computed live: one person's data is small, and §5.14 says there is no
+per-candidate rollup for exactly that reason.
+
+The employer-response figure is here deliberately. Silence after applying reads
+as a personal verdict; "this is how often the companies you applied to reply to
+anybody" turns it into a fact about a market. That is the single most useful
+thing this page can say.
+{% endcomment %}
+
+{% block title %}Your numbers — {{ site.name }}{% endblock %}
+
+{% block app_head %}
+  {% include "components/app_head.html" with title="Your numbers" text="What has happened to your applications, and how your CV score has moved." %}
+{% endblock %}
+
+{% block app_body %}
+  <div class="mx-auto max-w-3xl stack">
+    {% if not insights.has_data %}
+      {% include "components/empty_state.html" with icon="chart" title="Nothing to show yet" text="Apply to a few roles and this page fills in — outcomes, response rates, and how your CV score moves." action_url="/jobs/" action_label="Browse jobs" %}
+    {% else %}
+      <section class="stack">
+        <h2 class="stack-title">Last {{ insights.days }} days</h2>
+        <dl class="mt-3 grid gap-4 sm:grid-cols-2">
+          <div class="card"><div class="card-body">
+            <dt class="overline">Applications</dt>
+            <dd class="mt-1 text-display tabular-nums">{{ insights.applications }}</dd>
+          </div></div>
+          <div class="card"><div class="card-body">
+            <dt class="overline">Reached an interview</dt>
+            <dd class="mt-1 text-display tabular-nums">{{ insights.interviewing }}</dd>
+            <dd class="text-caption text-content-subtle">
+              {% widthratio insights.interview_rate 1 100 %}% of your applications
+            </dd>
+          </div></div>
+          <div class="card"><div class="card-body">
+            <dt class="overline">Profile views</dt>
+            <dd class="mt-1 text-display tabular-nums">{{ insights.profile_views }}</dd>
+            <dd class="text-caption text-content-subtle">
+              <a href="{% url 'applications:visibility' %}" class="link-editorial">Who looked</a>
+            </dd>
+          </div></div>
+          <div class="card"><div class="card-body">
+            <dt class="overline">Offers</dt>
+            <dd class="mt-1 text-display tabular-nums">{{ insights.offers }}</dd>
+          </div></div>
+        </dl>
+      </section>
+
+      <section class="card">
+        <div class="card-body">
+          <h2 class="text-body-lg">Are you being ignored?</h2>
+          <p class="mt-2 text-content-muted">
+            {{ insights.employer_response.replied }} of
+            {{ insights.employer_response.total }} companies you applied to have
+            moved your application past "new".
+            {% if insights.employer_response.rate < 0.4 %}
+              That is low, and it says more about them than about you: the
+              employers on this platform who reply, reply within a few days.
+            {% endif %}
+          </p>
+        </div>
+      </section>
+
+      {% if insights.score_trend %}
+        <section class="stack">
+          <h2 class="stack-title">Your CV score over time</h2>
+          <ul class="mt-3 space-y-1">
+            {% for point in insights.score_trend %}
+              <li class="flex items-center justify-between gap-3 text-meta">
+                <span class="text-content-muted">
+                  {{ point.at|date:"j M Y" }}
+                  {% if not point.comparable %}
+                    <span class="text-content-subtle">(scored by an older method)</span>
+                  {% endif %}
+                </span>
+                <span class="tabular-nums">{{ point.score }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+    {% endif %}
+  </div>
+{% endblock %}

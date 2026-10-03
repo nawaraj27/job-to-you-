@@ -1,0 +1,25 @@
+{
+  "_about": "Speech corpus for `interview_benchmark --only speech`. Each case is rendered to audio by the Windows speech synthesiser (scripts/render_speech_corpus.ps1) at the given rate, optionally mixed with noise, then transcribed by the configured speech provider and scored by word error rate. Synthetic speech is cleaner than a real candidate on a laptop mic; results are a floor for failures, not a claim about real-world accuracy.",
+  "cases": [
+    {"name": "reconciliation_normal", "rate": 0, "noise": 0.0,
+     "text": "Our payout ledger and the bank statement differed by forty two thousand rupees at month end. I exported both, joined them on the transaction reference, and found nineteen refunds recorded twice because a retry created a second row."},
+    {"name": "reconciliation_fast", "rate": 4, "noise": 0.0,
+     "text": "Our payout ledger and the bank statement differed by forty two thousand rupees at month end. I exported both, joined them on the transaction reference, and found nineteen refunds recorded twice because a retry created a second row."},
+    {"name": "reconciliation_noisy", "rate": 0, "noise": 0.08,
+     "text": "Our payout ledger and the bank statement differed by forty two thousand rupees at month end. I exported both, joined them on the transaction reference, and found nineteen refunds recorded twice because a retry created a second row."},
+    {"name": "technical_terms", "rate": 0, "noise": 0.0,
+     "text": "I added a unique constraint in PostgreSQL, wrote a Django migration to backfill the duplicates, and put the Celery task behind an idempotency key so retries were safe."},
+    {"name": "design_intern_slow", "rate": -3, "noise": 0.0,
+     "text": "For a university club I redesigned the event sign up form. I interviewed five members, moved payment after registration, and cut the form from twelve fields to six."},
+    {"name": "retraction", "rate": 0, "noise": 0.0,
+     "text": "I led the database migration. Actually, let me correct that. My manager led it, and I wrote the rollback scripts and ran them during the cutover weekend."},
+    {"name": "short_non_answer", "rate": 0, "noise": 0.0,
+     "text": "I don't know."},
+    {"name": "customer_service", "rate": 1, "noise": 0.04,
+     "text": "A customer was charged twice for a delivery. I checked the order history, confirmed the duplicate charge, issued the refund while they were still on the call, and flagged the payment bug to the engineering team."},
+    {"name": "teaching_noisy_fast", "rate": 3, "noise": 0.08,
+     "text": "When half my physics class failed the circuits test, I rewrote the next two lessons around building real circuits in groups, and the retest average went from forty one to sixty eight percent."},
+    {"name": "long_pauses", "rate": -1, "noise": 0.0, "pause_after_sentences_ms": 2500,
+     "text": "I noticed the report was slow. I profiled the query. The join was missing an index. After adding it the report ran in four seconds instead of two minutes."}
+  ]
+}

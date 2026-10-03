@@ -1,0 +1,63 @@
+{% comment %}
+Whether this CV is ready (CVR-01), from `resumes.readiness` — the one
+calculation the guided builder and the analysis report both show.
+
+"Complete" only when every requirement is met: the sections, a current
+analysis with no failing ATS check, and — when aimed at a job — every skill
+it requires. Otherwise "Incomplete", with what is left said in words.
+
+CVP-05 (manual testing): an incomplete CV used to read as a verdict with
+nothing to do about it. It now says what to do next, item by item, with a
+button into the editor — guidance, not a failure notice. The ATS line is
+stated on its own because it is the question candidates actually ask.
+{% endcomment %}
+{% if readiness %}
+  <section class="mt-6" aria-labelledby="readiness-title" data-readiness="{{ readiness.label|lower }}">
+    <h2 id="readiness-title" class="text-meta font-medium">
+      CV readiness:
+      {% if readiness.complete %}
+        <span class="badge badge-positive">Complete</span>
+      {% else %}
+        {% comment %}`badge-caution` clears 4.5:1 on its tint since A11Y-01
+        was fixed (5.13:1 light).{% endcomment %}
+        <span class="badge badge-caution">{% icon "warning" css_class="size-3.5" %}Incomplete</span>
+      {% endif %}
+    </h2>
+    <p class="mt-1 text-meta text-content-muted" data-ats="{% for item in readiness.requirements %}{% if item.key == 'ats' %}{{ item.status }}{% endif %}{% endfor %}">
+      ATS:
+      {% for item in readiness.requirements %}{% if item.key == "ats" %}{% if item.met %}<span class="font-medium text-success-fg">Passing</span>{% elif item.unchecked %}<span class="font-medium text-content">Not checked since your last edit</span>{% else %}<span class="font-medium text-warning-fg">Incomplete</span>{% endif %}{% endif %}{% endfor %}
+    </p>
+    <ul class="mt-2 space-y-1.5 text-meta">
+      {% for item in readiness.requirements %}
+        <li class="flex items-start gap-2">
+          {% if item.met %}
+            <span class="mt-px shrink-0 text-success-fg">{% icon "check-circle" css_class="size-4" %}</span>
+            <span class="min-w-0">
+              <span>{{ item.label }}</span>
+              {% if item.detail %}<span class="block text-content-muted">{{ item.detail }}</span>{% endif %}
+            </span>
+          {% else %}
+            <span class="mt-px shrink-0 text-warning-fg">{% icon "warning" css_class="size-4" %}</span>
+            <span class="min-w-0">
+              <span class="font-medium">{{ item.label }}</span>
+              {% if item.detail %}<span class="block text-content-muted">{{ item.detail }}</span>{% endif %}
+              <span class="block text-content">
+                {% if item.key == "sections" %}Next: fill in the sections above in the editor.
+                {% elif item.key == "ats" and item.unchecked %}Next: run the analysis again. Nothing has failed; it is just out of date.
+                {% elif item.key == "ats" %}Next: fix what the checks below point at, then run the analysis again.
+                {% elif item.key == "target" %}Next: add the skills you have actually used, in the bullet that shows you using them, or answer the assistant's questions about them.
+                {% endif %}
+              </span>
+            </span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    {% if not readiness.complete and document %}
+      <div class="mt-3 flex flex-wrap gap-2">
+        <a href="{% url 'resume:editor' document_id=document.public_id %}" class="btn btn-primary btn-sm">Improve CV</a>
+        <a href="{% url 'resume:guided' document_id=document.public_id %}" class="btn btn-secondary btn-sm">Go step by step</a>
+      </div>
+    {% endif %}
+  </section>
+{% endif %}

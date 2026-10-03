@@ -1,0 +1,58 @@
+{% comment %}
+The document itself.
+
+Rendered from the same flattened `Document` the PDF and DOCX renderers consume
+and sized by the same theme, so what a candidate arranges on screen is what
+downloads. One partial, used by the editor's preview, the print view and the
+template gallery, so the three can never drift apart.
+
+Blocks arrive already grouped into head / band / body / sidebar. The template
+does not decide which section goes where — that is `rendering/theme.py`, which
+the exporters read too.
+{% endcomment %}
+{% comment %}
+The theme's numbers go on `.sheet-inner`, not on `.sheet`.
+
+Every one of them is a multiple of `--sheet-unit`, and a custom property whose
+value references another custom property is resolved on the element where it is
+*declared* — not lazily at each descendant that reads it. Declared on `.sheet`,
+where `--sheet-unit` does not exist, all of them computed to the
+guaranteed-invalid value and silently inherited as nothing: the sidebar grid
+collapsed to one column and every type size fell back to whatever it inherited.
+`.sheet-inner` is where the unit lives, so it is where the rest must live too.
+{% endcomment %}
+<article class="{{ paper_classes }}" lang="en">
+  <div class="sheet-inner" style="{{ paper_style }}">
+
+    <header class="sheet-head">
+      {% for block in paper.head %}{% include "resume/_paper_block.html" %}{% endfor %}
+    </header>
+
+    {% if paper.band %}
+      <div class="sheet-band">
+        {% for block in paper.band %}{% include "resume/_paper_block.html" %}{% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="sheet-columns">
+      {% if paper.sidebar %}
+        <aside class="sheet-sidebar">
+          {% for block in paper.sidebar %}{% include "resume/_paper_block.html" %}{% endfor %}
+        </aside>
+      {% endif %}
+
+      <div class="sheet-body">
+        {% for block in paper.body %}
+          {% include "resume/_paper_block.html" %}
+        {% empty %}
+          {% if not paper.band %}
+            <p class="sheet-placeholder">
+              Add a section and it appears here, exactly as it will export.
+            </p>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</article>

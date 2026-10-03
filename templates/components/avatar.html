@@ -1,0 +1,26 @@
+{% comment %}
+Company or person mark.
+
+  {% include "components/avatar.html" with name=job.company.name initials=job.company.initials %}
+  {% include "components/avatar.html" with name=c.name initials=c.initials logo=c.logo size="lg" %}
+
+A real logo is used when the record has one; otherwise a monogram tile. The
+monogram is set in the serif at a generous size so it reads as a mark rather
+than as a placeholder — a grey square with two faint letters is the thing that
+makes a directory look unfinished.
+
+size — sm | md (default) | lg | xl
+{% endcomment %}
+{% with size=size|default:"md" %}
+<span class="grid shrink-0 place-items-center overflow-hidden rounded-lg border border-hairline bg-surface-sunken
+             {% if size == 'sm' %}size-8{% elif size == 'lg' %}size-14{% elif size == 'xl' %}size-20{% else %}size-11{% endif %}">
+  {% if logo %}
+    <img src="{{ logo }}" alt="{{ name }} logo" class="size-full object-contain p-1">
+  {% else %}
+    <span class="font-serif font-medium leading-none text-content-muted
+                 {% if size == 'sm' %}text-meta{% elif size == 'lg' %}text-xl{% elif size == 'xl' %}text-3xl{% else %}text-base{% endif %}"
+          aria-hidden="true">{{ initials }}</span>
+    <span class="sr-only">{{ name }}</span>
+  {% endif %}
+</span>
+{% endwith %}

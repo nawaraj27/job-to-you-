@@ -1,0 +1,46 @@
+{% comment %}
+Ask for a first draft of a cover letter for this job.
+
+  {% include "letters/_draft_button.html" with job=raw_job %}
+
+A form rather than a link, and a POST rather than a GET, because this calls a
+model and creates a row: a GET that a refresh repeats would spend the
+candidate's budget twice for one click.
+
+The tone choice is three options, not a slider. A slider implies a continuum
+the model does not have, and every extra control is a decision somebody has to
+make before they get any help at all.
+{% endcomment %}
+<details class="inline-block">
+  <summary class="btn btn-secondary btn-lg cursor-pointer">Draft a letter</summary>
+  <form method="post" action="{% url 'letters:act' %}" class="card mt-3">
+    {% csrf_token %}
+    <input type="hidden" name="command" value="draft">
+    <input type="hidden" name="job" value="{{ job.slug }}">
+    <div class="card-body stack">
+      <div class="field">
+        <label class="label" for="draft-tone">How should it read</label>
+        <select class="input" id="draft-tone" name="tone">
+          <option value="direct" selected>Direct and plain</option>
+          <option value="warm">Warm</option>
+          <option value="formal">Formal</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="draft-notes">Anything it should mention</label>
+        <textarea class="input" id="draft-notes" name="notes" rows="3"
+                  placeholder="A project, a reason you want this role, a connection to the company."></textarea>
+        <p class="text-caption text-content-subtle">
+          Optional. Otherwise the draft uses only your profile and will not claim
+          anything you have not told us.
+        </p>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary">Write a first draft</button>
+        <p class="mt-2 text-caption text-content-subtle">
+          It goes to your letters, not to this employer. You edit it before anything is sent.
+        </p>
+      </div>
+    </div>
+  </form>
+</details>

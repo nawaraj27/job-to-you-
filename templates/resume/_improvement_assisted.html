@@ -1,0 +1,121 @@
+{% comment %}
+Assisted: the plan before anything happens, then the drafts before they apply.
+
+  1. Safe rewordings — listed with their reason; drafted only when the
+     candidate presses "Prepare these improvements".
+  2. Needs your input — listed with what is missing; each is asked in the
+     conversation, never filled in.
+  3. Proposed changes — every drafted change, before and after, with
+     "Apply these improvements" and "Reject". Only the ids on this screen
+     are posted, so nothing drafted after the page was drawn can be applied
+     unseen. Rejecting leaves the CV exactly as it was.
+{% endcomment %}
+{% with busy=job.is_active %}
+<div class="mt-6 grid gap-6 xl:grid-cols-2">
+  <div class="min-w-0">
+    <h3 class="stack-head stack-title">
+      <span>Safe rewording <span class="font-normal text-content-muted">(we can draft these)</span></span>
+    </h3>
+    {% if plan.reword_items %}
+      <ol class="mt-3 space-y-2">
+        {% for item in plan.reword_items %}
+          <li class="card p-4">
+            <p class="font-medium">{{ item.title }}</p>
+            <p class="mt-1 text-meta text-content-muted"><span class="font-medium text-content">Reason:</span> {{ item.detected }}</p>
+            <p class="mt-1 text-meta text-content-subtle">{{ item.affects }}{% if item.status == "drafted" %} · <span class="text-accent-content">drafted, see below</span>{% endif %}</p>
+          </li>
+        {% endfor %}
+      </ol>
+      {% if plan.draftable %}
+        <form class="mt-4" hx-post="{% url 'resume:builder_act' document_id=document.public_id %}" hx-target="#editor-live" hx-swap="outerHTML"
+              hx-disabled-elt="find button">
+          <input type="hidden" name="command" value="improve_prepare">
+          <input type="hidden" name="token" value="{{ form_token }}">
+          {% for item in plan.draftable %}<input type="hidden" name="keys" value="{{ item.key }}">{% endfor %}
+          <button type="submit" class="btn btn-primary" {% if busy %}disabled{% endif %}>Prepare these improvements</button>
+          <p class="mt-2 text-meta text-content-subtle">
+            {% if busy %}Working. See progress below.{% else %}Rewords only what your CV already says. Nothing changes until you apply it.{% endif %}
+          </p>
+        </form>
+      {% endif %}
+    {% else %}
+      <p class="mt-3 text-meta text-content-muted">Nothing to reword. The wording that is there is working.</p>
+    {% endif %}
+  </div>
+
+  <div class="min-w-0">
+    <h3 class="stack-head stack-title">
+      <span>Needs your input <span class="font-normal text-content-muted">(we ask; we never guess)</span></span>
+    </h3>
+    {% if plan.input_items %}
+      <ol class="mt-3 space-y-2">
+        {% for item in plan.input_items %}
+          <li class="card p-4">
+            <p class="font-medium">{{ item.title }}</p>
+            <p class="mt-1 text-meta text-content-muted"><span class="font-medium text-content">We need:</span> {{ item.first_question }}</p>
+            <p class="mt-1 text-meta text-content-subtle">{{ item.affects }}</p>
+            {% if item.can_answer %}
+              <button type="button" class="btn btn-secondary btn-sm mt-3"
+                      hx-post="{% url 'resume:builder_act' document_id=document.public_id %}" hx-target="#editor-live" hx-swap="outerHTML"
+                      hx-vals='{"command": "improve_ask", "key": "{{ item.key|escapejs }}"}' {% if busy %}disabled{% endif %}>
+                {% icon "message" css_class="size-4" %}Answer this
+              </button>
+            {% elif item.can_fill_contact %}
+              <form class="mt-3 flex flex-wrap items-end gap-2" hx-post="{% url 'resume:builder_act' document_id=document.public_id %}" hx-target="#editor-live" hx-swap="outerHTML" hx-disabled-elt="find button">
+                <input type="hidden" name="command" value="improve_contact">
+                <input type="hidden" name="key" value="{{ item.key }}">
+                <div class="field grow">
+                  <label for="assist-fill-{{ forloop.counter }}" class="label">Your {{ item.contact_field }}</label>
+                  <input id="assist-fill-{{ forloop.counter }}" name="value" class="input" required
+                         {% if item.contact_field == "email" %}type="email" autocomplete="email"{% else %}type="tel" autocomplete="tel"{% endif %}>
+                </div>
+                <button type="submit" class="btn btn-secondary btn-sm">Add</button>
+              </form>
+            {% elif item.anchor %}
+              <a href="#{{ item.anchor }}" class="link-editorial mt-2 inline-block text-meta">Fix it in the editor</a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="mt-3 text-meta text-content-muted">Nothing is missing that only you could supply.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if plan.proposed %}
+  <div class="mt-8">
+    <h3 class="stack-head stack-title">
+      <span>Review the proposed changes</span>
+      <span class="stack-note">Nothing below is on your CV yet.</span>
+    </h3>
+    <ol class="mt-3 space-y-3">
+      {% for suggestion in plan.proposed %}
+        <li class="card p-4">
+          <p class="text-meta font-medium">{{ suggestion.rationale|default:"Suggested change" }}</p>
+          <div class="mt-3 grid gap-3 md:grid-cols-2">
+            <div class="min-w-0">
+              <p class="overline">Now</p>
+              <p class="mt-1 whitespace-pre-line text-meta text-content-muted">{{ suggestion.original|default:"(empty)" }}</p>
+            </div>
+            <div class="min-w-0">
+              <p class="overline">Proposed</p>
+              <p class="mt-1 whitespace-pre-line text-meta">{{ suggestion.proposed }}</p>
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+    <form class="mt-4 flex flex-wrap items-center gap-2" hx-post="{% url 'resume:builder_act' document_id=document.public_id %}"
+          hx-target="#editor-live" hx-swap="outerHTML" hx-disabled-elt="find button">
+      {% for suggestion in plan.proposed %}<input type="hidden" name="ids" value="{{ suggestion.pk }}">{% endfor %}
+      <button type="submit" name="command" value="improve_apply" class="btn btn-primary">Apply these improvements</button>
+      <button type="submit" name="command" value="improve_reject" class="btn btn-secondary">Keep my wording</button>
+      <p class="w-full text-meta text-content-subtle">
+        Applies the {{ plan.proposed|length }} change{{ plan.proposed|length|pluralize }} shown above, and only those.
+        You can also decide one at a time under Suggestions, and Undo reverses an apply.
+      </p>
+    </form>
+  </div>
+{% endif %}
+{% endwith %}
